@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -159,7 +160,9 @@ class DocxTemplateResponseMixin:
         """
         return None
 
-    def _build_context_callable(self, **kwargs: Any):
+    def _build_context_callable(
+        self, **kwargs: Any
+    ) -> Callable[[DocxTemplate], dict[str, Any]]:
         """Build a context callable that tries get_context_data_with_docx first.
 
         Returns:

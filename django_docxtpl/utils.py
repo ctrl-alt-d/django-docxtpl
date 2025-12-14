@@ -225,11 +225,14 @@ def render_to_file(
             output_format="pdf",
         )
     """
-    from io import BytesIO
+    from io import BytesIO  # pylint: disable=import-outside-toplevel
 
-    from docxtpl import DocxTemplate  # type: ignore[import-untyped]
+    from docxtpl import DocxTemplate  # pylint: disable=import-outside-toplevel
 
-    from django_docxtpl.converters import convert_docx, update_fields_in_docx
+    from django_docxtpl.converters import (  # pylint: disable=import-outside-toplevel
+        convert_docx,
+        update_fields_in_docx,
+    )
 
     # Resolve template path
     template_path = Path(template)
