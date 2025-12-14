@@ -107,6 +107,56 @@ class TestDocxTemplateView:
 
         assert response["Content-Type"] == "application/pdf"
 
+    def test_get_with_get_context_data_with_docx(
+        self, get_request, simple_docx_template
+    ):
+        """Test GET request uses get_context_data_with_docx when defined."""
+        received_docx = None
+
+        class TestView(DocxTemplateView):
+            template_name = simple_docx_template
+
+            def get_context_data_with_docx(self, docx, **kwargs):
+                nonlocal received_docx
+                received_docx = docx
+                return {"name": "FromDocx", "title": "Title"}
+
+        view = TestView()
+        view.request = get_request
+        view.args = ()
+        view.kwargs = {}
+
+        response = view.get(get_request)
+
+        from docxtpl import DocxTemplate
+
+        assert received_docx is not None
+        assert isinstance(received_docx, DocxTemplate)
+        assert response.status_code == 200
+
+    def test_get_context_data_with_docx_receives_url_kwargs(
+        self, get_request, simple_docx_template
+    ):
+        """Test get_context_data_with_docx receives URL kwargs."""
+        received_kwargs = None
+
+        class TestView(DocxTemplateView):
+            template_name = simple_docx_template
+
+            def get_context_data_with_docx(self, docx, **kwargs):
+                nonlocal received_kwargs
+                received_kwargs = kwargs
+                return {"name": "Test", "title": "Title"}
+
+        view = TestView()
+        view.request = get_request
+        view.args = ()
+        view.kwargs = {"pk": 42, "slug": "test-slug"}
+
+        view.get(get_request, pk=42, slug="test-slug")
+
+        assert received_kwargs == {"pk": 42, "slug": "test-slug"}
+
 
 class MockModel:
     """Mock Django model for testing."""

@@ -130,15 +130,50 @@ with open("document_updated.docx", "wb") as f:
 
 **Note:** The `update_fields` feature requires LibreOffice, even when the output format is DOCX.
 
-## Working with Images
+## Working with Images (InlineImage)
 
-docxtpl supports inserting images into templates. First, add a placeholder in your template:
+docxtpl supports inserting images into templates using `InlineImage`. Since `InlineImage` requires access to the `DocxTemplate` instance, django-docxtpl provides several ways to handle this.
+
+First, add a placeholder in your template:
 
 ```
 {{ logo }}
 ```
 
-Then in your view:
+### Class-Based View (Recommended)
+
+Use `get_context_data_with_docx()` to get access to the `DocxTemplate` instance:
+
+```python
+from docxtpl import InlineImage
+from docx.shared import Mm
+from django_docxtpl import DocxTemplateView
+
+class DocumentWithLogoView(DocxTemplateView):
+    template_name = "documents/letterhead.docx"
+    filename = "report"
+    output_format = "pdf"
+
+    def get_context_data_with_docx(self, docx, **kwargs):
+        """Build context with access to DocxTemplate instance."""
+        return {
+            "title": "Company Report",
+            "logo": InlineImage(
+                docx,
+                image_descriptor="static/images/logo.png",
+                width=Mm(30)
+            ),
+            "signature": InlineImage(
+                docx,
+                image_descriptor="static/images/signature.png",
+                width=Mm(50)
+            ),
+        }
+```
+
+### Function-Based View
+
+Use a callable as the `context` parameter:
 
 ```python
 from docxtpl import InlineImage
@@ -146,32 +181,118 @@ from docx.shared import Mm
 from django_docxtpl import DocxTemplateResponse
 
 def document_with_image(request):
-    # Load the template to get the docx object
-    from docxtpl import DocxTemplate
-    from pathlib import Path
-    
-    template_path = Path("templates/documents/letterhead.docx")
-    doc = DocxTemplate(template_path)
-    
-    context = {
-        "title": "Company Report",
-        "logo": InlineImage(doc, "static/images/logo.png", width=Mm(30)),
-    }
-    
-    # Note: For images, you need to render manually
-    doc.render(context)
-    
-    from io import BytesIO
-    buffer = BytesIO()
-    doc.save(buffer)
-    buffer.seek(0)
-    
-    response = HttpResponse(
-        buffer.getvalue(),
-        content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    def build_context(docx):
+        return {
+            "title": "Company Report",
+            "logo": InlineImage(
+                docx,
+                image_descriptor="static/images/logo.png",
+                width=Mm(30)
+            ),
+        }
+
+    return DocxTemplateResponse(
+        request,
+        template="documents/letterhead.docx",
+        context=build_context,  # Pass the callable
+        filename="report",
+        output_format="pdf",
     )
-    response["Content-Disposition"] = 'attachment; filename="report.docx"'
-    return response
+```
+
+### Background Tasks (render_to_file)
+
+Use a callable with `render_to_file` for background document generation:
+
+```python
+from huey.contrib.djhuey import task
+from docxtpl import InlineImage
+from docx.shared import Mm
+from django_docxtpl import render_to_file
+
+@task()
+def generate_report_with_chart(report_id, output_dir):
+    """Generate a report with embedded chart image."""
+    report = Report.objects.get(pk=report_id)
+    chart_path = generate_chart_image(report)  # Your chart generation logic
+
+    def build_context(docx):
+        return {
+            "title": report.title,
+            "chart": InlineImage(docx, image_descriptor=chart_path, width=Mm(150)),
+            "data": report.data,
+        }
+
+    output_path = render_to_file(
+        template="reports/report_with_chart.docx",
+        context=build_context,
+        output_dir=output_dir,
+        filename=f"report_{report_id}",
+        output_format="pdf",
+    )
+    return str(output_path)
+```
+
+### Mixed Context (Simple Values + Images)
+
+You can still use `get_context_data()` for simple values and only override `get_context_data_with_docx()` when you need images:
+
+```python
+from docxtpl import InlineImage
+from docx.shared import Mm
+from django_docxtpl import DocxTemplateView
+
+class InvoiceView(DocxTemplateView):
+    template_name = "invoices/invoice.docx"
+    output_format = "pdf"
+
+    def get_context_data_with_docx(self, docx, **kwargs):
+        # Get base context from parent (includes object for DetailView)
+        invoice = Invoice.objects.get(pk=kwargs.get("pk"))
+        
+        return {
+            "invoice": invoice,
+            "company_logo": InlineImage(
+                docx,
+                image_descriptor="static/images/company_logo.png",
+                width=Mm(40)
+            ),
+            "qr_code": InlineImage(
+                docx,
+                image_descriptor=invoice.qr_code_path,
+                width=Mm(25)
+            ),
+        }
+```
+
+### Image from URL or BytesIO
+
+`InlineImage` accepts file paths, URLs, or BytesIO objects:
+
+```python
+from io import BytesIO
+import requests
+from docxtpl import InlineImage
+from docx.shared import Mm
+
+def get_context_data_with_docx(self, docx, **kwargs):
+    # From file path
+    logo = InlineImage(docx, "static/logo.png", width=Mm(30))
+    
+    # From BytesIO (e.g., generated image)
+    chart_buffer = generate_chart_as_bytesio()
+    chart = InlineImage(docx, chart_buffer, width=Mm(100))
+    
+    # From URL (download first)
+    response = requests.get("https://example.com/image.png")
+    image_buffer = BytesIO(response.content)
+    remote_image = InlineImage(docx, image_buffer, width=Mm(50))
+    
+    return {
+        "logo": logo,
+        "chart": chart,
+        "remote_image": remote_image,
+    }
 ```
 
 ## Working with Tables

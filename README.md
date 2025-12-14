@@ -179,6 +179,53 @@ class AnnualReportView(DocxTemplateView):
 
 **Note:** This feature requires LibreOffice, even when output format is DOCX.
 
+## Working with Images (InlineImage)
+
+To insert images in your documents, use docxtpl's `InlineImage`. Since it requires access to the `DocxTemplate` instance, use `get_context_data_with_docx()` in class-based views or a callable context in function-based views:
+
+**Class-based view:**
+
+```python
+from docxtpl import InlineImage
+from docx.shared import Mm
+from django_docxtpl import DocxTemplateView
+
+class ReportWithLogoView(DocxTemplateView):
+    template_name = "reports/report.docx"
+    output_format = "pdf"
+
+    def get_context_data_with_docx(self, docx, **kwargs):
+        """Build context with access to DocxTemplate instance."""
+        return {
+            "title": "Annual Report",
+            "logo": InlineImage(docx, "static/logo.png", width=Mm(30)),
+        }
+```
+
+**Function-based view:**
+
+```python
+from docxtpl import InlineImage
+from docx.shared import Mm
+from django_docxtpl import DocxTemplateResponse
+
+def report_with_image(request):
+    def build_context(docx):
+        return {
+            "title": "Report",
+            "logo": InlineImage(docx, "static/logo.png", width=Mm(30)),
+        }
+
+    return DocxTemplateResponse(
+        request,
+        template="reports/report.docx",
+        context=build_context,  # Callable receives DocxTemplate instance
+        output_format="pdf",
+    )
+```
+
+See the [advanced documentation](docs/advanced.md#working-with-images-inlineimage) for more examples.
+
 ## Performance Considerations
 
 Document generation, especially PDF conversion with LibreOffice, can be slow (1-5 seconds per document). For production environments, consider:
@@ -247,7 +294,7 @@ def generate_report_to_disk(output_dir, filename, context):
 DocxTemplateResponse(
     request,
     template,           # Path to .docx template
-    context=None,       # Template context dict
+    context=None,       # Template context dict or callable(docx) -> dict
     filename="document",# Output filename (without extension)
     output_format="docx",# Output format
     as_attachment=True, # Download as attachment or inline
@@ -270,6 +317,7 @@ Override methods:
 - `get_output_format()` - Dynamic format selection
 - `get_update_fields()` - Dynamic field update control
 - `get_context_data(**kwargs)` - Provide template context
+- `get_context_data_with_docx(docx, **kwargs)` - Provide context with DocxTemplate access (for InlineImage, etc.)
 
 ### DocxTemplateDetailView
 

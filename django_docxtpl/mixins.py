@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from django.http import HttpRequest, HttpResponse
 
 from django_docxtpl.response import DocxTemplateResponse
 from django_docxtpl.utils import OutputFormat
+
+if TYPE_CHECKING:
+    from docxtpl import DocxTemplate  # type: ignore[import-untyped]
 
 
 class DocxTemplateResponseMixin:
@@ -107,7 +110,8 @@ class DocxTemplateResponseMixin:
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         """Return the context dictionary for template rendering.
 
-        Override this method to provide context variables.
+        Override this method to provide context variables when you don't need
+        access to the DocxTemplate instance.
 
         Args:
             **kwargs: Additional context variables.
@@ -117,23 +121,86 @@ class DocxTemplateResponseMixin:
         """
         return kwargs
 
-    def render_to_response(self, context: dict[str, Any] | None = None) -> HttpResponse:
+    def get_context_data_with_docx(
+        self, docx: DocxTemplate, **kwargs: Any
+    ) -> dict[str, Any] | None:
+        """Return the context dictionary with access to the DocxTemplate instance.
+
+        Override this method when you need to create objects that require the
+        DocxTemplate instance, such as InlineImage, RichText, or Subdoc.
+
+        If this method returns a non-None value, it takes precedence over
+        get_context_data().
+
+        Args:
+            docx: The DocxTemplate instance being rendered.
+            **kwargs: Additional context variables (typically URL kwargs).
+
+        Returns:
+            Dictionary of context variables, or None to fall back to
+            get_context_data().
+
+        Example:
+            from docxtpl import InlineImage
+            from docx.shared import Mm
+
+            class MyDocumentView(DocxTemplateView):
+                template_name = "document.docx"
+
+                def get_context_data_with_docx(self, docx, **kwargs):
+                    return {
+                        "name": self.request.user.get_full_name(),
+                        "logo": InlineImage(
+                            docx,
+                            image_descriptor="path/to/logo.png",
+                            width=Mm(50)
+                        ),
+                    }
+        """
+        return None
+
+    def _build_context_callable(self, **kwargs: Any):
+        """Build a context callable that tries get_context_data_with_docx first.
+
+        Returns:
+            A callable that receives DocxTemplate and returns the context dict.
+        """
+
+        def context_builder(docx: DocxTemplate) -> dict[str, Any]:
+            # Try get_context_data_with_docx first
+            context = self.get_context_data_with_docx(docx, **kwargs)
+            if context is not None:
+                return context
+            # Fall back to get_context_data
+            return self.get_context_data(**kwargs)
+
+        return context_builder
+
+    def render_to_response(
+        self, context: dict[str, Any] | None = None, **kwargs: Any
+    ) -> HttpResponse:
         """Render the template and return an HTTP response.
 
         Args:
             context: Optional context dictionary. If not provided,
-                    get_context_data() is called.
+                    a context builder is used that tries get_context_data_with_docx()
+                    first, then falls back to get_context_data().
+            **kwargs: Additional keyword arguments passed to the context methods.
 
         Returns:
             DocxTemplateResponse with the rendered document.
         """
-        if context is None:
-            context = self.get_context_data()
+        # If context is explicitly provided, use it directly
+        if context is not None:
+            final_context: dict[str, Any] | Any = context
+        else:
+            # Use a callable that will resolve context with access to DocxTemplate
+            final_context = self._build_context_callable(**kwargs)
 
         return DocxTemplateResponse(
             request=self.request,
             template=self.get_template_name(),
-            context=context,
+            context=final_context,
             filename=self.get_filename(),
             output_format=self.get_output_format(),
             as_attachment=self.as_attachment,

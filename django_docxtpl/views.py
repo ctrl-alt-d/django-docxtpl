@@ -53,8 +53,7 @@ class DocxTemplateView(DocxTemplateResponseMixin, View):
         Returns:
             HttpResponse with the rendered document.
         """
-        context = self.get_context_data(**kwargs)
-        return self.render_to_response(context)
+        return self.render_to_response(**kwargs)
 
 
 class DocxTemplateDetailView(DocxTemplateResponseMixin, View):
@@ -159,5 +158,4 @@ class DocxTemplateDetailView(DocxTemplateResponseMixin, View):
             HttpResponse with the rendered document.
         """
         self.object = self.get_object()
-        context = self.get_context_data(**kwargs)
-        return self.render_to_response(context)
+        return self.render_to_response(**kwargs)

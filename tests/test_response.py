@@ -320,3 +320,88 @@ class TestUpdateFields:
             )
 
             mock_update.assert_not_called()
+
+
+class TestCallableContext:
+    """Tests for callable context support in DocxTemplateResponse."""
+
+    def test_context_as_callable(self, get_request, simple_docx_template):
+        """Test that context can be a callable that receives DocxTemplate."""
+        received_docx = None
+
+        def context_builder(docx):
+            nonlocal received_docx
+            received_docx = docx
+            return {"name": "FromCallable", "title": "Callable Title"}
+
+        response = DocxTemplateResponse(
+            request=get_request,
+            template=simple_docx_template,
+            context=context_builder,
+            filename="test",
+        )
+
+        assert response.status_code == 200
+        # Verify that the callable was called with a DocxTemplate instance
+        from docxtpl import DocxTemplate
+
+        assert received_docx is not None
+        assert isinstance(received_docx, DocxTemplate)
+
+    def test_context_callable_renders_correctly(
+        self, get_request, simple_docx_template
+    ):
+        """Test that context from callable is used in rendering."""
+        from io import BytesIO
+        from zipfile import ZipFile
+
+        def context_builder(docx):
+            return {"name": "CallableName", "title": "CallableTitle"}
+
+        response = DocxTemplateResponse(
+            request=get_request,
+            template=simple_docx_template,
+            context=context_builder,
+            filename="test",
+        )
+
+        # Extract document.xml to verify content was rendered
+        docx_content = BytesIO(response.content)
+        with ZipFile(docx_content) as zf:
+            doc_xml = zf.read("word/document.xml").decode("utf-8")
+            assert "CallableName" in doc_xml
+            assert "CallableTitle" in doc_xml
+
+    def test_context_dict_still_works(
+        self, get_request, simple_docx_template, sample_context
+    ):
+        """Test that regular dict context still works (backward compatibility)."""
+        response = DocxTemplateResponse(
+            request=get_request,
+            template=simple_docx_template,
+            context=sample_context,
+            filename="test",
+        )
+
+        assert response.status_code == 200
+
+    def test_context_callable_with_pdf_conversion(
+        self, get_request, simple_docx_template
+    ):
+        """Test callable context works with PDF conversion."""
+        with patch("django_docxtpl.response.convert_docx") as mock_convert:
+            mock_convert.return_value = b"%PDF fake"
+
+            def context_builder(docx):
+                return {"name": "Test", "title": "Title"}
+
+            response = DocxTemplateResponse(
+                request=get_request,
+                template=simple_docx_template,
+                context=context_builder,
+                filename="test",
+                output_format="pdf",
+            )
+
+            assert response.status_code == 200
+            mock_convert.assert_called_once()

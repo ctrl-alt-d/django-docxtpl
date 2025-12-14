@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2024-12-14
+
+### Added
+- `get_context_data_with_docx(docx, **kwargs)` method in `DocxTemplateResponseMixin` for building context with access to the `DocxTemplate` instance (enables `InlineImage`, `RichText`, `Subdoc`, etc.)
+- Support for callable context in `DocxTemplateResponse` - context can now be a function that receives the `DocxTemplate` instance
+- Support for callable context in `render_to_file()` utility function
+- `ContextType` type alias exported for type hints
+- Comprehensive documentation for working with `InlineImage` in class-based views, function-based views, and background tasks
+
+### Changed
+- `DocxTemplateView.get()` now passes URL kwargs to context methods
+- `DocxTemplateDetailView.get()` now passes URL kwargs to context methods
+- `render_to_response()` now builds a context callable internally when no explicit context is provided
+
 ## [0.2.0] - 2024-12-14
 
 ### Added
@@ -42,6 +56,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Django >= 4.2
 - docxtpl >= 0.16
 
-[Unreleased]: https://github.com/ctrl-alt-d/django-docxtpl/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/ctrl-alt-d/django-docxtpl/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/ctrl-alt-d/django-docxtpl/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/ctrl-alt-d/django-docxtpl/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/ctrl-alt-d/django-docxtpl/releases/tag/v0.1.0
