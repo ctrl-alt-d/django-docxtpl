@@ -41,4 +41,4 @@ jobs:
         run: mypy django_docxtpl/
 
       - name: Run tests
-        run: pytest --tb=short -v
+        run: PYTHONPATH=. pytest --tb=short -v
