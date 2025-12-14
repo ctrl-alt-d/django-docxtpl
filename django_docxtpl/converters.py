@@ -63,11 +63,11 @@ def update_fields_in_docx(
         )
 
     # Get content as bytes
-    if hasattr(docx_content, "read"):
+    if isinstance(docx_content, bytes):
+        content_bytes = docx_content
+    else:
         content_bytes = docx_content.read()
         docx_content.seek(0)  # Reset position for potential reuse
-    else:
-        content_bytes = docx_content
 
     # Create temporary directory for processing
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -160,11 +160,11 @@ def convert_docx(
         )
 
     # Get content as bytes
-    if hasattr(docx_content, "read"):
+    if isinstance(docx_content, bytes):
+        content_bytes = docx_content
+    else:
         content_bytes = docx_content.read()
         docx_content.seek(0)  # Reset position for potential reuse
-    else:
-        content_bytes = docx_content
 
     # If update_fields is True, first process the document to update TOC, charts, etc.
     if update_fields:

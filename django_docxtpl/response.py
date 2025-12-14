@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from django.http import HttpResponse
-from docxtpl import DocxTemplate
+from docxtpl import DocxTemplate  # type: ignore[import-untyped]
 
 from django_docxtpl.converters import convert_docx, update_fields_in_docx
 from django_docxtpl.utils import (

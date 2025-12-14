@@ -82,7 +82,7 @@ class DocxTemplateDetailView(DocxTemplateResponseMixin, View):
                 return f"invoice_{self.object.number}"
     """
 
-    model: type | None = None
+    model: Any = None  # Django Model class with Manager
     pk_url_kwarg: str = "pk"
     slug_url_kwarg: str = "slug"
     slug_field: str = "slug"
@@ -133,7 +133,7 @@ class DocxTemplateDetailView(DocxTemplateResponseMixin, View):
         if self.context_object_name:
             return self.context_object_name
         if self.model:
-            return self.model.__name__.lower()
+            return str(self.model.__name__).lower()
         return "object"
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
