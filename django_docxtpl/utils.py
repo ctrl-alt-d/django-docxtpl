@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import shutil
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from django.conf import settings
 
@@ -154,7 +154,7 @@ def get_template_dir() -> Path | None:
 
 def render_to_file(
     template: str | Path,
-    context: dict,
+    context: dict[str, Any],
     output_dir: str | Path,
     filename: str,
     output_format: OutputFormat = "docx",
@@ -197,7 +197,7 @@ def render_to_file(
     """
     from io import BytesIO
 
-    from docxtpl import DocxTemplate
+    from docxtpl import DocxTemplate  # type: ignore[import-untyped]
 
     from django_docxtpl.converters import convert_docx, update_fields_in_docx
 
