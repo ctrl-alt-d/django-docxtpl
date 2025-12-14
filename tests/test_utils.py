@@ -320,3 +320,88 @@ class TestRenderToFile:
             )
 
             assert output_path.exists()
+
+
+class TestRenderToFileCallableContext:
+    """Tests for callable context support in render_to_file."""
+
+    def test_render_to_file_with_callable_context(self, simple_docx_template, tmp_path):
+        """Test render_to_file with callable context."""
+        received_docx = None
+
+        def context_builder(docx):
+            nonlocal received_docx
+            received_docx = docx
+            return {"name": "FromCallable", "title": "CallableTitle"}
+
+        output_path = render_to_file(
+            template=simple_docx_template,
+            context=context_builder,
+            output_dir=tmp_path,
+            filename="test_callable",
+            output_format="docx",
+        )
+
+        from docxtpl import DocxTemplate
+
+        assert received_docx is not None
+        assert isinstance(received_docx, DocxTemplate)
+        assert output_path.exists()
+
+    def test_render_to_file_callable_renders_correctly(
+        self, simple_docx_template, tmp_path
+    ):
+        """Test that callable context is used in rendering."""
+        from zipfile import ZipFile
+
+        def context_builder(docx):
+            return {"name": "CallableRendered", "title": "CallableTitle"}
+
+        output_path = render_to_file(
+            template=simple_docx_template,
+            context=context_builder,
+            output_dir=tmp_path,
+            filename="test_callable",
+            output_format="docx",
+        )
+
+        # Extract document.xml to verify content was rendered
+        with ZipFile(output_path) as zf:
+            doc_xml = zf.read("word/document.xml").decode("utf-8")
+            assert "CallableRendered" in doc_xml
+            assert "CallableTitle" in doc_xml
+
+    def test_render_to_file_dict_context_still_works(
+        self, simple_docx_template, sample_context, tmp_path
+    ):
+        """Test that dict context still works (backward compatibility)."""
+        output_path = render_to_file(
+            template=simple_docx_template,
+            context=sample_context,
+            output_dir=tmp_path,
+            filename="test_dict",
+            output_format="docx",
+        )
+
+        assert output_path.exists()
+
+    @patch("django_docxtpl.converters.convert_docx")
+    def test_render_to_file_callable_with_pdf(
+        self, mock_convert, simple_docx_template, tmp_path
+    ):
+        """Test callable context with PDF conversion."""
+        mock_convert.return_value = b"%PDF-1.4 fake"
+
+        def context_builder(docx):
+            return {"name": "Test", "title": "Title"}
+
+        output_path = render_to_file(
+            template=simple_docx_template,
+            context=context_builder,
+            output_dir=tmp_path,
+            filename="test_callable",
+            output_format="pdf",
+        )
+
+        assert output_path.exists()
+        mock_convert.assert_called_once()

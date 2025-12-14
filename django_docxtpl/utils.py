@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 import shutil
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from django.conf import settings
+
+if TYPE_CHECKING:
+    from docxtpl import DocxTemplate  # type: ignore[import-untyped]
 
 # Supported output formats
 OutputFormat = Literal["docx", "pdf", "odt", "html", "txt"]
@@ -152,9 +156,13 @@ def get_template_dir() -> Path | None:
     return None
 
 
+# Type alias for context: can be a dict or a callable that receives DocxTemplate
+ContextType = dict[str, Any] | Callable[["DocxTemplate"], dict[str, Any]]
+
+
 def render_to_file(
     template: str | Path,
-    context: dict[str, Any],
+    context: ContextType,
     output_dir: str | Path,
     filename: str,
     output_format: OutputFormat = "docx",
@@ -169,7 +177,10 @@ def render_to_file(
     Args:
         template: Path to the DOCX template file (absolute or relative to
                  DOCXTPL_TEMPLATE_DIR).
-        context: Dictionary of context variables for template rendering.
+        context: Dictionary of context variables for template rendering, or
+                a callable that receives the DocxTemplate instance and returns
+                a context dictionary. Use a callable when you need to create
+                objects that require the template instance (e.g., InlineImage).
         output_dir: Directory where the output file will be saved.
         filename: Output filename without extension.
         output_format: Desired output format (docx, pdf, odt, html, txt).
@@ -186,6 +197,7 @@ def render_to_file(
     Example:
         from django_docxtpl.utils import render_to_file
 
+        # Simple context dict
         output_path = render_to_file(
             template="reports/monthly.docx",
             context={"month": "December", "data": report_data},
@@ -194,12 +206,33 @@ def render_to_file(
             output_format="pdf",
             update_fields=True,
         )
+
+        # Context with InlineImage (using callable)
+        from docxtpl import InlineImage
+        from docx.shared import Mm
+
+        def build_context(docx):
+            return {
+                "title": "Report",
+                "chart": InlineImage(docx, "chart.png", width=Mm(150)),
+            }
+
+        output_path = render_to_file(
+            template="reports/monthly.docx",
+            context=build_context,
+            output_dir="/tmp/reports",
+            filename="monthly_report",
+            output_format="pdf",
+        )
     """
-    from io import BytesIO
+    from io import BytesIO  # pylint: disable=import-outside-toplevel
 
-    from docxtpl import DocxTemplate  # type: ignore[import-untyped]
+    from docxtpl import DocxTemplate  # pylint: disable=import-outside-toplevel
 
-    from django_docxtpl.converters import convert_docx, update_fields_in_docx
+    from django_docxtpl.converters import (  # pylint: disable=import-outside-toplevel
+        convert_docx,
+        update_fields_in_docx,
+    )
 
     # Resolve template path
     template_path = Path(template)
@@ -215,9 +248,17 @@ def render_to_file(
     if not template_path.exists():
         raise FileNotFoundError(f"Template not found: {template_path}")
 
-    # Load and render the template
+    # Load the template
     doc = DocxTemplate(template_path)
-    doc.render(context)
+
+    # Resolve context: if callable, call it with the doc instance
+    if callable(context):
+        resolved_context = context(doc)
+    else:
+        resolved_context = context
+
+    # Render the template
+    doc.render(resolved_context)
 
     # Save to BytesIO
     docx_buffer = BytesIO()

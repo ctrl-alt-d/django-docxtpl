@@ -29,12 +29,31 @@ response = DocxTemplateResponse(
 |-----------|------|---------|-------------|
 | `request` | `HttpRequest` | required | The Django request object |
 | `template` | `str \| Path` | required | Path to the DOCX template file |
-| `context` | `dict \| None` | `None` | Context dictionary for template rendering |
+| `context` | `dict \| Callable \| None` | `None` | Context dictionary or callable that receives `DocxTemplate` instance |
 | `filename` | `str` | `"document"` | Output filename (without extension) |
 | `output_format` | `OutputFormat` | `"docx"` | Output format: `"docx"`, `"pdf"`, `"odt"`, `"html"`, `"txt"` |
 | `as_attachment` | `bool` | `True` | If `True`, browser downloads file; if `False`, displays inline |
 | `update_fields` | `bool` | `False` | If `True`, updates TOC, charts, and other dynamic fields using LibreOffice |
 | `**kwargs` | | | Additional arguments passed to `HttpResponse` |
+
+**Context as callable:** When `context` is a callable, it receives the `DocxTemplate` instance as its argument. This allows creating `InlineImage`, `RichText`, and other objects that require the template instance:
+
+```python
+from docxtpl import InlineImage
+from docx.shared import Mm
+
+def build_context(docx):
+    return {
+        "title": "Report",
+        "logo": InlineImage(docx, "logo.png", width=Mm(30)),
+    }
+
+response = DocxTemplateResponse(
+    request,
+    template="report.docx",
+    context=build_context,
+)
+```
 
 #### Example
 
@@ -129,7 +148,7 @@ def get_update_fields(self):
 
 ##### get_context_data(**kwargs) → dict
 
-Returns the context dictionary for template rendering.
+Returns the context dictionary for template rendering. Use this for simple contexts without images.
 
 ```python
 def get_context_data(self, **kwargs):
@@ -138,6 +157,29 @@ def get_context_data(self, **kwargs):
     context["data"] = self.get_report_data()
     return context
 ```
+
+##### get_context_data_with_docx(docx, **kwargs) → dict | None
+
+Returns the context dictionary with access to the `DocxTemplate` instance. Use this when you need to create `InlineImage`, `RichText`, `Subdoc`, or other docxtpl objects that require the template instance.
+
+If this method returns a non-`None` value, it takes precedence over `get_context_data()`.
+
+```python
+from docxtpl import InlineImage, RichText
+from docx.shared import Mm
+
+def get_context_data_with_docx(self, docx, **kwargs):
+    return {
+        "title": "Report with Images",
+        "logo": InlineImage(docx, "static/logo.png", width=Mm(30)),
+        "signature": InlineImage(docx, "static/signature.png", width=Mm(50)),
+        "styled_text": RichText("Important", bold=True, color="FF0000"),
+    }
+```
+
+**Parameters:**
+- `docx` (`DocxTemplate`): The template instance being rendered
+- `**kwargs`: URL keyword arguments (e.g., `pk`, `slug`)
 
 ##### render_to_response(context=None) → HttpResponse
 
@@ -351,11 +393,33 @@ print(f"Report saved to: {output_path}")
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `template` | `str \| Path` | required | Path to the DOCX template (absolute or relative to `DOCXTPL_TEMPLATE_DIR`) |
-| `context` | `dict` | required | Context dictionary for template rendering |
+| `context` | `dict \| Callable` | required | Context dictionary or callable that receives `DocxTemplate` instance |
 | `output_dir` | `str \| Path` | required | Directory where the output file will be saved |
 | `filename` | `str` | required | Output filename (without extension) |
 | `output_format` | `OutputFormat` | `"docx"` | Output format: `"docx"`, `"pdf"`, `"odt"`, `"html"`, `"txt"` |
 | `update_fields` | `bool` | `False` | Update TOC, charts, and dynamic fields |
+
+**Context as callable:** When `context` is a callable, it receives the `DocxTemplate` instance, allowing you to use `InlineImage` and other objects that require the template:
+
+```python
+from docxtpl import InlineImage
+from docx.shared import Mm
+from django_docxtpl import render_to_file
+
+def build_context(docx):
+    return {
+        "title": "Report",
+        "chart": InlineImage(docx, "chart.png", width=Mm(150)),
+    }
+
+output_path = render_to_file(
+    template="reports/monthly.docx",
+    context=build_context,
+    output_dir="/var/reports",
+    filename="report",
+    output_format="pdf",
+)
+```
 
 #### Returns
 

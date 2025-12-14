@@ -34,11 +34,11 @@ from django_docxtpl.converters import (
     update_fields_in_docx,
 )
 from django_docxtpl.mixins import DocxTemplateResponseMixin
-from django_docxtpl.response import DocxTemplateResponse
+from django_docxtpl.response import ContextType, DocxTemplateResponse
 from django_docxtpl.utils import OutputFormat, render_to_file
 from django_docxtpl.views import DocxTemplateDetailView, DocxTemplateView
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 __all__ = [
     # Response
     "DocxTemplateResponse",
@@ -55,4 +55,5 @@ __all__ = [
     "render_to_file",
     # Types
     "OutputFormat",
+    "ContextType",
 ]

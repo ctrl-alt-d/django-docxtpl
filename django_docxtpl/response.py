@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from io import BytesIO
 from pathlib import Path
 from typing import Any
@@ -16,6 +17,9 @@ from django_docxtpl.utils import (
     get_filename_with_extension,
     get_template_dir,
 )
+
+# Type alias for context: can be a dict or a callable that receives DocxTemplate
+ContextType = dict[str, Any] | Callable[[DocxTemplate], dict[str, Any]]
 
 
 class DocxTemplateResponse(HttpResponse):
@@ -42,7 +46,7 @@ class DocxTemplateResponse(HttpResponse):
         self,
         request: Any,
         template: str | Path,
-        context: dict[str, Any] | None = None,
+        context: ContextType | None = None,
         filename: str = "document",
         output_format: OutputFormat = "docx",
         as_attachment: bool = True,
@@ -55,7 +59,10 @@ class DocxTemplateResponse(HttpResponse):
             request: The HTTP request object.
             template: Path to the DOCX template file. Can be absolute or relative
                      to DOCXTPL_TEMPLATE_DIR setting.
-            context: Dictionary of context variables for template rendering.
+            context: Dictionary of context variables for template rendering, or
+                    a callable that receives the DocxTemplate instance and returns
+                    a context dictionary. Use a callable when you need to create
+                    objects that require the template instance (e.g., InlineImage).
             filename: Output filename without extension (extension added automatically).
             output_format: Desired output format (docx, pdf, odt, html, txt).
             as_attachment: If True, sets Content-Disposition to attachment.
@@ -121,7 +128,7 @@ class DocxTemplateResponse(HttpResponse):
     def _render_document(
         self,
         template: str | Path,
-        context: dict[str, Any],
+        context: ContextType,
         output_format: OutputFormat,
         update_fields: bool = False,
     ) -> bytes:
@@ -129,7 +136,8 @@ class DocxTemplateResponse(HttpResponse):
 
         Args:
             template: Path to the template file.
-            context: Context dictionary for rendering.
+            context: Context dictionary for rendering, or a callable that
+                    receives the DocxTemplate instance and returns a dict.
             output_format: Desired output format.
             update_fields: If True, update all fields (TOC, charts, etc.)
                           using LibreOffice.
@@ -139,9 +147,17 @@ class DocxTemplateResponse(HttpResponse):
         """
         template_path = self._resolve_template_path(template)
 
-        # Load and render the template
+        # Load the template
         doc = DocxTemplate(template_path)
-        doc.render(context)
+
+        # Resolve context: if callable, call it with the doc instance
+        if callable(context):
+            resolved_context = context(doc)
+        else:
+            resolved_context = context
+
+        # Render the template
+        doc.render(resolved_context)
 
         # Save to BytesIO
         docx_buffer = BytesIO()

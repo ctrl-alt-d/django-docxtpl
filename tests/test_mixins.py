@@ -310,3 +310,166 @@ class TestUpdateFieldsMixin:
         # Change output format
         view.output_format = "pdf"
         assert view.get_update_fields() is True
+
+
+class TestGetContextDataWithDocx:
+    """Tests for get_context_data_with_docx method."""
+
+    def test_get_context_data_with_docx_default_returns_none(
+        self, simple_docx_template
+    ):
+        """Test that default get_context_data_with_docx returns None."""
+        from docxtpl import DocxTemplate
+
+        class TestView(DocxTemplateResponseMixin, View):
+            template_name = simple_docx_template
+
+        view = TestView()
+        doc = DocxTemplate(simple_docx_template)
+        result = view.get_context_data_with_docx(doc)
+
+        assert result is None
+
+    def test_get_context_data_with_docx_override(self, simple_docx_template):
+        """Test that get_context_data_with_docx can be overridden."""
+        from docxtpl import DocxTemplate
+
+        class TestView(DocxTemplateResponseMixin, View):
+            template_name = simple_docx_template
+
+            def get_context_data_with_docx(self, docx, **kwargs):
+                return {
+                    "name": "FromDocx",
+                    "title": "DocxTitle",
+                    "docx_type": type(docx).__name__,
+                }
+
+        view = TestView()
+        doc = DocxTemplate(simple_docx_template)
+        result = view.get_context_data_with_docx(doc)
+
+        assert result == {
+            "name": "FromDocx",
+            "title": "DocxTitle",
+            "docx_type": "DocxTemplate",
+        }
+
+    def test_get_context_data_with_docx_receives_kwargs(self, simple_docx_template):
+        """Test that get_context_data_with_docx receives kwargs."""
+        from docxtpl import DocxTemplate
+
+        class TestView(DocxTemplateResponseMixin, View):
+            template_name = simple_docx_template
+
+            def get_context_data_with_docx(self, docx, **kwargs):
+                return {"received_kwargs": kwargs}
+
+        view = TestView()
+        doc = DocxTemplate(simple_docx_template)
+        result = view.get_context_data_with_docx(doc, pk=123, slug="test")
+
+        assert result == {"received_kwargs": {"pk": 123, "slug": "test"}}
+
+    def test_render_to_response_uses_get_context_data_with_docx(
+        self, get_request, simple_docx_template
+    ):
+        """Test that render_to_response uses get_context_data_with_docx when defined."""
+        received_docx = None
+
+        class TestView(DocxTemplateResponseMixin, View):
+            template_name = simple_docx_template
+
+            def get_context_data_with_docx(self, docx, **kwargs):
+                nonlocal received_docx
+                received_docx = docx
+                return {"name": "WithDocx", "title": "Title"}
+
+        view = TestView()
+        view.request = get_request
+
+        response = view.render_to_response()
+
+        from docxtpl import DocxTemplate
+
+        assert received_docx is not None
+        assert isinstance(received_docx, DocxTemplate)
+        assert response.status_code == 200
+
+    def test_render_to_response_falls_back_to_get_context_data(
+        self, get_request, simple_docx_template
+    ):
+        """Test render_to_response falls back when with_docx returns None."""
+        get_context_data_called = False
+
+        class TestView(DocxTemplateResponseMixin, View):
+            template_name = simple_docx_template
+
+            def get_context_data(self, **kwargs):
+                nonlocal get_context_data_called
+                get_context_data_called = True
+                return {"name": "Fallback", "title": "Title"}
+
+        view = TestView()
+        view.request = get_request
+
+        response = view.render_to_response()
+
+        assert get_context_data_called
+        assert response.status_code == 200
+
+    def test_get_context_data_with_docx_takes_priority(
+        self, get_request, simple_docx_template
+    ):
+        """Test that get_context_data_with_docx takes priority over get_context_data."""
+        from io import BytesIO
+        from zipfile import ZipFile
+
+        class TestView(DocxTemplateResponseMixin, View):
+            template_name = simple_docx_template
+
+            def get_context_data(self, **kwargs):
+                return {"name": "NormalMethod", "title": "Title1"}
+
+            def get_context_data_with_docx(self, docx, **kwargs):
+                return {"name": "DocxMethod", "title": "Title2"}
+
+        view = TestView()
+        view.request = get_request
+
+        response = view.render_to_response()
+
+        # Extract document.xml to verify which context was used
+        docx_content = BytesIO(response.content)
+        with ZipFile(docx_content) as zf:
+            doc_xml = zf.read("word/document.xml").decode("utf-8")
+            assert "DocxMethod" in doc_xml
+            assert "NormalMethod" not in doc_xml
+
+    def test_render_to_response_with_explicit_context_bypasses_methods(
+        self, get_request, simple_docx_template
+    ):
+        """Test that explicit context in render_to_response bypasses both methods."""
+        from io import BytesIO
+        from zipfile import ZipFile
+
+        class TestView(DocxTemplateResponseMixin, View):
+            template_name = simple_docx_template
+
+            def get_context_data(self, **kwargs):
+                return {"name": "FromMethod", "title": "Title"}
+
+            def get_context_data_with_docx(self, docx, **kwargs):
+                return {"name": "FromDocxMethod", "title": "Title"}
+
+        view = TestView()
+        view.request = get_request
+
+        response = view.render_to_response(
+            {"name": "ExplicitContext", "title": "Title"}
+        )
+
+        # Extract document.xml to verify explicit context was used
+        docx_content = BytesIO(response.content)
+        with ZipFile(docx_content) as zf:
+            doc_xml = zf.read("word/document.xml").decode("utf-8")
+            assert "ExplicitContext" in doc_xml
