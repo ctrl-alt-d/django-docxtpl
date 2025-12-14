@@ -55,15 +55,11 @@ git tag vX.Y.Z
 git push origin vX.Y.Z
 ```
 
-### 5. Crear el Release a GitHub
+Quan facis push del tag, automàticament:
+1. Es crearà un **GitHub Release** amb notes generades automàticament
+2. Es publicarà el paquet a **PyPI**
 
-1. Ves a **Releases** → **Draft a new release**
-2. Selecciona el tag `vX.Y.Z`
-3. Títol: `vX.Y.Z`
-4. Descripció: Copia els canvis del changelog
-5. Clica **Publish release**
-
-### 6. Verificar la publicació
+### 5. Verificar la publicació
 
 El workflow `publish.yml` s'executarà automàticament. Pots verificar:
 
