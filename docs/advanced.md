@@ -557,3 +557,68 @@ Document generation can be memory-intensive. Monitor your application and consid
 - Using Celery for heavy workloads
 - Setting appropriate worker memory limits
 - Implementing request queuing for peak times
+
+## Custom Jinja2 Filters
+
+You can add custom Jinja2 filters for formatting values in your templates.
+
+### In Background Tasks
+
+Use the `jinja_env` parameter in `render_to_file()`:
+
+```python
+from jinja2 import Environment
+from django_docxtpl import render_to_file
+
+def format_thousands(value):
+    """Format number with thousands separator: 1234567 → 1.234.567"""
+    return f"{value:,.0f}".replace(",", ".")
+
+def format_currency(value):
+    """Format as currency: 1234.56 → 1.234,56 €"""
+    return f"{value:,.2f} €".replace(",", "X").replace(".", ",").replace("X", ".")
+
+# Create Jinja2 environment with custom filters
+jinja_env = Environment(autoescape=True)
+jinja_env.filters["thousands"] = format_thousands
+jinja_env.filters["currency"] = format_currency
+
+output_path = render_to_file(
+    template="reports/sales.docx",
+    context={
+        "total_sales": 1234567,
+        "revenue": 98765.43,
+    },
+    output_dir="/var/reports",
+    filename="sales_report",
+    output_format="pdf",
+    jinja_env=jinja_env,
+)
+```
+
+In your DOCX template:
+- `{{ total_sales|thousands }}` → `1.234.567`
+- `{{ revenue|currency }}` → `98.765,43 €`
+
+### Alternative: Functions in Context
+
+If you prefer not to use filters, you can pass formatting functions directly in the context:
+
+```python
+def format_thousands(value):
+    return f"{value:,.0f}".replace(",", ".")
+
+output_path = render_to_file(
+    template="reports/sales.docx",
+    context={
+        "total_sales": 1234567,
+        "fmt_thousands": format_thousands,  # Pass function in context
+    },
+    output_dir="/var/reports",
+    filename="sales_report",
+    output_format="pdf",
+)
+```
+
+In your DOCX template, call it as a function:
+- `{{ fmt_thousands(total_sales) }}` → `1.234.567`

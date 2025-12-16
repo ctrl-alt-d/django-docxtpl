@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2025-12-16
+
+### Added
+- `jinja_env` parameter in `render_to_file()` to support custom Jinja2 filters, globals, and configuration
+
 ## [0.3.0] - 2024-12-14
 
 ### Added
@@ -56,7 +61,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Django >= 4.2
 - docxtpl >= 0.16
 
-[Unreleased]: https://github.com/ctrl-alt-d/django-docxtpl/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/ctrl-alt-d/django-docxtpl/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/ctrl-alt-d/django-docxtpl/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/ctrl-alt-d/django-docxtpl/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/ctrl-alt-d/django-docxtpl/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/ctrl-alt-d/django-docxtpl/releases/tag/v0.1.0

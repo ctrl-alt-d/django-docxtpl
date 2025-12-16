@@ -398,6 +398,7 @@ print(f"Report saved to: {output_path}")
 | `filename` | `str` | required | Output filename (without extension) |
 | `output_format` | `OutputFormat` | `"docx"` | Output format: `"docx"`, `"pdf"`, `"odt"`, `"html"`, `"txt"` |
 | `update_fields` | `bool` | `False` | Update TOC, charts, and dynamic fields |
+| `jinja_env` | `Environment \| None` | `None` | Custom Jinja2 Environment with filters, globals, or other configuration |
 
 **Context as callable:** When `context` is a callable, it receives the `DocxTemplate` instance, allowing you to use `InlineImage` and other objects that require the template:
 
@@ -420,6 +421,30 @@ output_path = render_to_file(
     output_format="pdf",
 )
 ```
+
+**Custom Jinja2 filters:** Use the `jinja_env` parameter to add custom filters:
+
+```python
+from jinja2 import Environment
+from django_docxtpl import render_to_file
+
+def format_currency(value):
+    return f"{value:,.2f} €".replace(",", ".")
+
+jinja_env = Environment(autoescape=True)
+jinja_env.filters["currency"] = format_currency
+
+output_path = render_to_file(
+    template="invoices/template.docx",
+    context={"total": 1234.56},
+    output_dir="/var/invoices",
+    filename="invoice",
+    output_format="pdf",
+    jinja_env=jinja_env,
+)
+```
+
+In your template, use the filter: `{{ total|currency }}` → `1.234,56 €`
 
 #### Returns
 

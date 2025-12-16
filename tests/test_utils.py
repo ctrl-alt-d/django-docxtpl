@@ -405,3 +405,24 @@ class TestRenderToFileCallableContext:
 
         assert output_path.exists()
         mock_convert.assert_called_once()
+
+    def test_render_to_file_with_jinja_env(self, simple_docx_template, tmp_path):
+        """Test render_to_file with custom jinja_env."""
+        from jinja2 import Environment
+
+        def format_milers(value):
+            return f"{value:,.0f}".replace(",", ".")
+
+        jinja_env = Environment(autoescape=True)
+        jinja_env.filters["milers"] = format_milers
+
+        output_path = render_to_file(
+            template=simple_docx_template,
+            context={"name": "Test", "title": "Title"},
+            output_dir=tmp_path,
+            filename="test_jinja_env",
+            output_format="docx",
+            jinja_env=jinja_env,
+        )
+
+        assert output_path.exists()

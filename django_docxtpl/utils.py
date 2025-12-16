@@ -168,6 +168,7 @@ def render_to_file(
     output_format: OutputFormat = "docx",
     *,
     update_fields: bool = False,
+    jinja_env: Any | None = None,
 ) -> Path:
     """Render a DOCX template and save to a file.
 
@@ -185,6 +186,9 @@ def render_to_file(
         filename: Output filename without extension.
         output_format: Desired output format (docx, pdf, odt, html, txt).
         update_fields: If True, update TOC, charts, and other dynamic fields.
+        jinja_env: Optional Jinja2 Environment instance with custom filters,
+                  globals, or other configuration. If not provided, docxtpl
+                  will create a default Environment.
 
     Returns:
         Absolute path to the generated file.
@@ -224,6 +228,24 @@ def render_to_file(
             filename="monthly_report",
             output_format="pdf",
         )
+
+        # Using custom Jinja2 filters
+        from jinja2 import Environment
+
+        def format_milers(value):
+            return f"{value:,.0f}".replace(",", ".")
+
+        jinja_env = Environment(autoescape=True)
+        jinja_env.filters['milers'] = format_milers
+
+        output_path = render_to_file(
+            template="reports/monthly.docx",
+            context={"value": 1234567},
+            output_dir="/tmp/reports",
+            filename="monthly_report",
+            output_format="pdf",
+            jinja_env=jinja_env,
+        )
     """
     from io import BytesIO  # pylint: disable=import-outside-toplevel
 
@@ -257,8 +279,8 @@ def render_to_file(
     else:
         resolved_context = context
 
-    # Render the template
-    doc.render(resolved_context)
+    # Render the template with optional custom jinja_env
+    doc.render(resolved_context, jinja_env=jinja_env)
 
     # Save to BytesIO
     docx_buffer = BytesIO()
