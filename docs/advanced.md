@@ -130,6 +130,129 @@ with open("document_updated.docx", "wb") as f:
 
 **Note:** The `update_fields` feature requires LibreOffice, even when the output format is DOCX.
 
+## Custom Jinja2 Filters
+
+docxtpl uses Jinja2 for template rendering. You can add custom filters to format data in your templates.
+
+### Function-Based View
+
+```python
+from jinja2 import Environment
+from django_docxtpl import DocxTemplateResponse
+
+def format_currency(value):
+    """Format number as currency: 1234.56 → 1.234,56 €"""
+    return f"{value:,.2f} €".replace(",", "X").replace(".", ",").replace("X", ".")
+
+def format_thousands(value):
+    """Format number with thousand separators: 1234567 → 1.234.567"""
+    return f"{value:,.0f}".replace(",", ".")
+
+def invoice_view(request, invoice_id):
+    invoice = Invoice.objects.get(pk=invoice_id)
+
+    # Create custom Jinja2 Environment
+    jinja_env = Environment(autoescape=True)
+    jinja_env.filters["currency"] = format_currency
+    jinja_env.filters["thousands"] = format_thousands
+
+    return DocxTemplateResponse(
+        request,
+        template="invoices/template.docx",
+        context={
+            "invoice": invoice,
+            "total": invoice.total,
+            "quantity": invoice.quantity,
+        },
+        filename=f"invoice_{invoice.number}",
+        output_format="pdf",
+        jinja_env=jinja_env,
+    )
+```
+
+In your template:
+```
+Total: {{ total|currency }}
+Quantity: {{ quantity|thousands }}
+```
+
+Output:
+```
+Total: 1.234,56 €
+Quantity: 1.234.567
+```
+
+### Class-Based View
+
+```python
+from jinja2 import Environment
+from django_docxtpl import DocxTemplateView
+
+def format_currency(value):
+    return f"{value:,.2f} €".replace(",", "X").replace(".", ",").replace("X", ".")
+
+class InvoiceView(DocxTemplateView):
+    template_name = "invoices/template.docx"
+    output_format = "pdf"
+
+    def get_jinja_env(self):
+        env = Environment(autoescape=True)
+        env.filters["currency"] = format_currency
+        return env
+
+    def get_context_data(self, **kwargs):
+        invoice = Invoice.objects.get(pk=kwargs.get("pk"))
+        return {"invoice": invoice, "total": invoice.total}
+```
+
+### Class-Based View with Attribute
+
+```python
+from jinja2 import Environment
+from django_docxtpl import DocxTemplateView
+
+# Create environment at module level (reusable)
+def format_currency(value):
+    return f"{value:,.2f} €".replace(",", "X").replace(".", ",").replace("X", ".")
+
+invoice_jinja_env = Environment(autoescape=True)
+invoice_jinja_env.filters["currency"] = format_currency
+
+class InvoiceView(DocxTemplateView):
+    template_name = "invoices/template.docx"
+    output_format = "pdf"
+    jinja_env = invoice_jinja_env  # Set as class attribute
+
+    def get_context_data(self, **kwargs):
+        return {"total": 1234.56}
+```
+
+### Background Tasks (render_to_file)
+
+```python
+from jinja2 import Environment
+from django_docxtpl import render_to_file
+
+def format_date_catalan(value):
+    months = ["gener", "febrer", "març", "abril", "maig", "juny",
+              "juliol", "agost", "setembre", "octubre", "novembre", "desembre"]
+    return f"{value.day} de {months[value.month-1]} del {value.year}"
+
+jinja_env = Environment(autoescape=True)
+jinja_env.filters["data_cat"] = format_date_catalan
+
+output_path = render_to_file(
+    template="reports/monthly.docx",
+    context={"date": date.today(), "data": report_data},
+    output_dir="/var/reports",
+    filename="report",
+    output_format="pdf",
+    jinja_env=jinja_env,
+)
+```
+
+In your template: `{{ date|data_cat }}` → `16 de desembre del 2025`
+
 ## Working with Images (InlineImage)
 
 docxtpl supports inserting images into templates using `InlineImage`. Since `InlineImage` requires access to the `DocxTemplate` instance, django-docxtpl provides several ways to handle this.

@@ -405,3 +405,58 @@ class TestCallableContext:
 
             assert response.status_code == 200
             mock_convert.assert_called_once()
+
+
+class TestJinjaEnv:
+    """Tests for custom Jinja2 Environment support."""
+
+    def test_jinja_env_with_custom_filter(self, get_request, tmp_path):
+        """Test DocxTemplateResponse with custom jinja_env filter."""
+        from io import BytesIO
+        from zipfile import ZipFile
+
+        from docx import Document
+        from jinja2 import Environment
+
+        # Create a template with custom filter syntax
+        doc = Document()
+        doc.add_paragraph("Value: {{ value|milers }}")
+        template_path = tmp_path / "filter_template.docx"
+        doc.save(template_path)
+
+        # Create custom jinja_env with filter
+        def format_milers(value):
+            return f"{value:,.0f}".replace(",", ".")
+
+        jinja_env = Environment(autoescape=True)
+        jinja_env.filters["milers"] = format_milers
+
+        response = DocxTemplateResponse(
+            request=get_request,
+            template=template_path,
+            context={"value": 1234567},
+            filename="test",
+            jinja_env=jinja_env,
+        )
+
+        assert response.status_code == 200
+
+        # Verify the filter was applied
+        docx_content = BytesIO(response.content)
+        with ZipFile(docx_content) as zf:
+            doc_xml = zf.read("word/document.xml").decode("utf-8")
+            assert "1.234.567" in doc_xml
+
+    def test_jinja_env_none_uses_default(
+        self, get_request, simple_docx_template, sample_context
+    ):
+        """Test that jinja_env=None uses default Jinja2 Environment."""
+        response = DocxTemplateResponse(
+            request=get_request,
+            template=simple_docx_template,
+            context=sample_context,
+            filename="test",
+            jinja_env=None,
+        )
+
+        assert response.status_code == 200

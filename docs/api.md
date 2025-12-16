@@ -19,6 +19,7 @@ response = DocxTemplateResponse(
     output_format="docx",
     as_attachment=True,
     update_fields=False,
+    jinja_env=None,
     **kwargs
 )
 ```
@@ -34,6 +35,7 @@ response = DocxTemplateResponse(
 | `output_format` | `OutputFormat` | `"docx"` | Output format: `"docx"`, `"pdf"`, `"odt"`, `"html"`, `"txt"` |
 | `as_attachment` | `bool` | `True` | If `True`, browser downloads file; if `False`, displays inline |
 | `update_fields` | `bool` | `False` | If `True`, updates TOC, charts, and other dynamic fields using LibreOffice |
+| `jinja_env` | `Environment \| None` | `None` | Custom Jinja2 Environment with filters, globals, or other configuration |
 | `**kwargs` | | | Additional arguments passed to `HttpResponse` |
 
 **Context as callable:** When `context` is a callable, it receives the `DocxTemplate` instance as its argument. This allows creating `InlineImage`, `RichText`, and other objects that require the template instance:
@@ -104,6 +106,7 @@ class MyDocumentView(DocxTemplateView):
 | `output_format` | `OutputFormat` | `"docx"` | Output format |
 | `as_attachment` | `bool` | `True` | Download as attachment |
 | `update_fields` | `bool` | `False` | Update TOC, charts, and dynamic fields |
+| `jinja_env` | `Environment \| None` | `None` | Custom Jinja2 Environment with filters |
 
 #### Methods
 
@@ -144,6 +147,22 @@ Returns whether to update dynamic fields (TOC, charts, etc.). Override for dynam
 def get_update_fields(self):
     # Only update fields when generating PDF
     return self.get_output_format() == "pdf"
+```
+
+##### get_jinja_env() → Environment | None
+
+Returns a custom Jinja2 Environment for template rendering. Override to add custom filters, globals, or other Jinja2 configuration.
+
+```python
+from jinja2 import Environment
+
+def get_jinja_env(self):
+    def format_currency(value):
+        return f"{value:,.2f} €".replace(",", ".")
+    
+    env = Environment(autoescape=True)
+    env.filters["currency"] = format_currency
+    return env
 ```
 
 ##### get_context_data(**kwargs) → dict

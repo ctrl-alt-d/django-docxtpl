@@ -9,6 +9,7 @@ from typing import Any
 
 from django.http import HttpResponse
 from docxtpl import DocxTemplate  # type: ignore[import-untyped]
+from jinja2 import Environment
 
 from django_docxtpl.converters import convert_docx, update_fields_in_docx
 from django_docxtpl.utils import (
@@ -51,6 +52,7 @@ class DocxTemplateResponse(HttpResponse):
         output_format: OutputFormat = "docx",
         as_attachment: bool = True,
         update_fields: bool = False,
+        jinja_env: Environment | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize the DocxTemplateResponse.
@@ -69,11 +71,13 @@ class DocxTemplateResponse(HttpResponse):
             update_fields: If True, update all fields (TOC, charts, cross-references,
                           etc.) using LibreOffice before final output. Requires
                           LibreOffice even for DOCX output format.
+            jinja_env: Custom Jinja2 Environment instance with filters, globals, etc.
+                      Use this to add custom filters or configure Jinja2 behavior.
             **kwargs: Additional arguments passed to HttpResponse.
         """
         # Generate the document content
         content = self._render_document(
-            template, context or {}, output_format, update_fields
+            template, context or {}, output_format, update_fields, jinja_env
         )
 
         # Set content type
@@ -131,6 +135,7 @@ class DocxTemplateResponse(HttpResponse):
         context: ContextType,
         output_format: OutputFormat,
         update_fields: bool = False,
+        jinja_env: Environment | None = None,
     ) -> bytes:
         """Render the DOCX template and optionally convert to another format.
 
@@ -141,6 +146,7 @@ class DocxTemplateResponse(HttpResponse):
             output_format: Desired output format.
             update_fields: If True, update all fields (TOC, charts, etc.)
                           using LibreOffice.
+            jinja_env: Custom Jinja2 Environment for template rendering.
 
         Returns:
             The rendered document as bytes.
@@ -156,8 +162,8 @@ class DocxTemplateResponse(HttpResponse):
         else:
             resolved_context = context
 
-        # Render the template
-        doc.render(resolved_context)
+        # Render the template with optional custom jinja_env
+        doc.render(resolved_context, jinja_env=jinja_env)
 
         # Save to BytesIO
         docx_buffer = BytesIO()

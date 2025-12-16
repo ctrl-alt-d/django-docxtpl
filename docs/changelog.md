@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2025-12-16
+
+### Added
+- `jinja_env` parameter in `DocxTemplateResponse` to support custom Jinja2 filters, globals, and configuration
+- `jinja_env` attribute and `get_jinja_env()` method in `DocxTemplateResponseMixin` for class-based views
+- `jinja_env` attribute documented in `DocxTemplateView` and `DocxTemplateDetailView`
+
 ## [0.4.0] - 2025-12-16
 
 ### Added
@@ -61,7 +68,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Django >= 4.2
 - docxtpl >= 0.16
 
-[Unreleased]: https://github.com/ctrl-alt-d/django-docxtpl/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/ctrl-alt-d/django-docxtpl/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/ctrl-alt-d/django-docxtpl/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/ctrl-alt-d/django-docxtpl/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/ctrl-alt-d/django-docxtpl/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/ctrl-alt-d/django-docxtpl/compare/v0.1.0...v0.2.0

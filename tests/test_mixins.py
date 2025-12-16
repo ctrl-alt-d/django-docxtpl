@@ -473,3 +473,111 @@ class TestGetContextDataWithDocx:
         with ZipFile(docx_content) as zf:
             doc_xml = zf.read("word/document.xml").decode("utf-8")
             assert "ExplicitContext" in doc_xml
+
+
+class TestJinjaEnvMixin:
+    """Tests for jinja_env support in DocxTemplateResponseMixin."""
+
+    def test_get_jinja_env_default(self, simple_docx_template):
+        """Test get_jinja_env returns None by default."""
+
+        class TestView(DocxTemplateResponseMixin, View):
+            template_name = simple_docx_template
+
+        view = TestView()
+        assert view.get_jinja_env() is None
+
+    def test_get_jinja_env_attribute(self, simple_docx_template):
+        """Test get_jinja_env returns jinja_env attribute."""
+        from jinja2 import Environment
+
+        jinja_env = Environment(autoescape=True)
+
+        class TestView(DocxTemplateResponseMixin, View):
+            template_name = simple_docx_template
+
+        view = TestView()
+        view.jinja_env = jinja_env
+        assert view.get_jinja_env() is jinja_env
+
+    def test_get_jinja_env_override(self, simple_docx_template):
+        """Test get_jinja_env can be overridden."""
+        from jinja2 import Environment
+
+        custom_env = Environment(autoescape=True)
+
+        class TestView(DocxTemplateResponseMixin, View):
+            template_name = simple_docx_template
+
+            def get_jinja_env(self):
+                return custom_env
+
+        view = TestView()
+        assert view.get_jinja_env() is custom_env
+
+    def test_render_to_response_passes_jinja_env(
+        self, get_request, simple_docx_template
+    ):
+        """Test render_to_response passes jinja_env to response."""
+        from jinja2 import Environment
+
+        jinja_env = Environment(autoescape=True)
+
+        class TestView(DocxTemplateResponseMixin, View):
+            template_name = simple_docx_template
+
+        view = TestView()
+        view.jinja_env = jinja_env
+        view.request = get_request
+
+        with patch("django_docxtpl.mixins.DocxTemplateResponse") as mock_response:
+            mock_response.return_value = MagicMock(status_code=200)
+
+            view.render_to_response({"name": "Test", "title": "Title"})
+
+            mock_response.assert_called_once()
+            _, kwargs = mock_response.call_args
+            assert kwargs.get("jinja_env") is jinja_env
+
+    def test_jinja_env_with_custom_filter(self, get_request, tmp_path):
+        """Test mixin with custom jinja_env filter renders correctly."""
+        from io import BytesIO
+        from zipfile import ZipFile
+
+        from docx import Document
+        from jinja2 import Environment
+
+        # Create a template with custom filter syntax
+        doc = Document()
+        doc.add_paragraph("Value: {{ value|milers }}")
+        template_path = tmp_path / "filter_template.docx"
+        doc.save(template_path)
+
+        # Create custom jinja_env with filter
+        def format_milers(value):
+            return f"{value:,.0f}".replace(",", ".")
+
+        jinja_env = Environment(autoescape=True)
+        jinja_env.filters["milers"] = format_milers
+
+        class TestView(DocxTemplateResponseMixin, View):
+            template_name = template_path
+
+            def get_jinja_env(self):
+                return jinja_env
+
+            def get_context_data(self, **kwargs):
+                return {"value": 1234567}
+
+        view = TestView()
+        view.request = get_request
+
+        response = view.render_to_response()
+
+        assert response.status_code == 200
+
+        # Verify the filter was applied
+        docx_content = BytesIO(response.content)
+        with ZipFile(docx_content) as zf:
+            doc_xml = zf.read("word/document.xml").decode("utf-8")
+            assert "1.234.567" in doc_xml

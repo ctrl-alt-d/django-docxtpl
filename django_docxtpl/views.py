@@ -21,6 +21,8 @@ class DocxTemplateView(DocxTemplateResponseMixin, View):
         filename: Output filename without extension.
         output_format: Desired output format (docx, pdf, odt, html, txt).
         as_attachment: Whether to serve as attachment or inline.
+        update_fields: Whether to update TOC, charts, and other fields.
+        jinja_env: Custom Jinja2 Environment with filters, globals, etc.
 
     Example:
         # urls.py
@@ -64,6 +66,12 @@ class DocxTemplateDetailView(DocxTemplateResponseMixin, View):
 
     Attributes:
         model: The model class to query.
+        template_name: Path to the DOCX template file.
+        filename: Output filename without extension.
+        output_format: Desired output format (docx, pdf, odt, html, txt).
+        as_attachment: Whether to serve as attachment or inline.
+        update_fields: Whether to update TOC, charts, and other fields.
+        jinja_env: Custom Jinja2 Environment with filters, globals, etc.
         pk_url_kwarg: Name of the URL keyword argument containing the PK.
         slug_url_kwarg: Name of the URL keyword argument containing the slug.
         slug_field: Name of the model field to use for slug lookup.

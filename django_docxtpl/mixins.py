@@ -13,6 +13,7 @@ from django_docxtpl.utils import OutputFormat
 
 if TYPE_CHECKING:
     from docxtpl import DocxTemplate  # type: ignore[import-untyped]
+    from jinja2 import Environment
 
 
 class DocxTemplateResponseMixin:
@@ -50,6 +51,7 @@ class DocxTemplateResponseMixin:
     output_format: OutputFormat = "docx"
     as_attachment: bool = True
     update_fields: bool = False
+    jinja_env: Environment | None = None
     request: HttpRequest  # Type hint for the request attribute from View
 
     def get_template_name(self) -> str | Path:
@@ -107,6 +109,17 @@ class DocxTemplateResponseMixin:
             True if fields should be updated, False otherwise.
         """
         return self.update_fields
+
+    def get_jinja_env(self) -> Environment | None:
+        """Return the Jinja2 Environment for template rendering.
+
+        Override this method to dynamically provide a custom Jinja2 Environment
+        with custom filters, globals, or other configurations.
+
+        Returns:
+            Jinja2 Environment instance or None to use the default.
+        """
+        return self.jinja_env
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         """Return the context dictionary for template rendering.
@@ -208,4 +221,5 @@ class DocxTemplateResponseMixin:
             output_format=self.get_output_format(),
             as_attachment=self.as_attachment,
             update_fields=self.get_update_fields(),
+            jinja_env=self.get_jinja_env(),
         )
