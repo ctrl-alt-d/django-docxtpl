@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2025-12-27
+
+- Fix readme documentation
+
 ## [0.6.0] - 2025-12-27
+
+- Unpublished
 
 ### Added
 - `autoescape` parameter in `DocxTemplateResponse` to enable Jinja2 autoescaping when rendering templates (default is `False`)
@@ -76,6 +82,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - docxtpl >= 0.16
 
 [Unreleased]: https://github.com/ctrl-alt-d/django-docxtpl/compare/v0.6.0...HEAD
+[0.7.0]: https://github.com/ctrl-alt-d/django-docxtpl/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/ctrl-alt-d/django-docxtpl/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/ctrl-alt-d/django-docxtpl/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/ctrl-alt-d/django-docxtpl/compare/v0.3.0...v0.4.0
