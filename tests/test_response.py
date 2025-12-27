@@ -326,12 +326,14 @@ class TestCallableContext:
     """Tests for callable context support in DocxTemplateResponse."""
 
     def test_context_as_callable(self, get_request, simple_docx_template):
-        """Test that context can be a callable that receives DocxTemplate."""
+        """Test that context can be callable receiving DocxTemplate and tmp_dir."""
         received_docx = None
+        received_tmp_dir = None
 
-        def context_builder(docx):
-            nonlocal received_docx
+        def context_builder(docx, tmp_dir):
+            nonlocal received_docx, received_tmp_dir
             received_docx = docx
+            received_tmp_dir = tmp_dir
             return {"name": "FromCallable", "title": "Callable Title"}
 
         response = DocxTemplateResponse(
@@ -343,10 +345,14 @@ class TestCallableContext:
 
         assert response.status_code == 200
         # Verify that the callable was called with a DocxTemplate instance
+        from pathlib import Path
+
         from docxtpl import DocxTemplate
 
         assert received_docx is not None
         assert isinstance(received_docx, DocxTemplate)
+        assert received_tmp_dir is not None
+        assert isinstance(received_tmp_dir, Path)
 
     def test_context_callable_renders_correctly(
         self, get_request, simple_docx_template
@@ -355,7 +361,7 @@ class TestCallableContext:
         from io import BytesIO
         from zipfile import ZipFile
 
-        def context_builder(docx):
+        def context_builder(docx, tmp_dir):
             return {"name": "CallableName", "title": "CallableTitle"}
 
         response = DocxTemplateResponse(
@@ -392,7 +398,7 @@ class TestCallableContext:
         with patch("django_docxtpl.response.convert_docx") as mock_convert:
             mock_convert.return_value = b"%PDF fake"
 
-            def context_builder(docx):
+            def context_builder(docx, tmp_dir):
                 return {"name": "Test", "title": "Title"}
 
             response = DocxTemplateResponse(

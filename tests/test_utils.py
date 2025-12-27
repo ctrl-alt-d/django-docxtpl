@@ -328,10 +328,12 @@ class TestRenderToFileCallableContext:
     def test_render_to_file_with_callable_context(self, simple_docx_template, tmp_path):
         """Test render_to_file with callable context."""
         received_docx = None
+        received_tmp_dir = None
 
-        def context_builder(docx):
-            nonlocal received_docx
+        def context_builder(docx, tmp_dir):
+            nonlocal received_docx, received_tmp_dir
             received_docx = docx
+            received_tmp_dir = tmp_dir
             return {"name": "FromCallable", "title": "CallableTitle"}
 
         output_path = render_to_file(
@@ -342,10 +344,14 @@ class TestRenderToFileCallableContext:
             output_format="docx",
         )
 
+        from pathlib import Path
+
         from docxtpl import DocxTemplate
 
         assert received_docx is not None
         assert isinstance(received_docx, DocxTemplate)
+        assert received_tmp_dir is not None
+        assert isinstance(received_tmp_dir, Path)
         assert output_path.exists()
 
     def test_render_to_file_callable_renders_correctly(
@@ -354,7 +360,7 @@ class TestRenderToFileCallableContext:
         """Test that callable context is used in rendering."""
         from zipfile import ZipFile
 
-        def context_builder(docx):
+        def context_builder(docx, tmp_dir):
             return {"name": "CallableRendered", "title": "CallableTitle"}
 
         output_path = render_to_file(
@@ -392,7 +398,7 @@ class TestRenderToFileCallableContext:
         """Test callable context with PDF conversion."""
         mock_convert.return_value = b"%PDF-1.4 fake"
 
-        def context_builder(docx):
+        def context_builder(docx, tmp_dir):
             return {"name": "Test", "title": "Title"}
 
         output_path = render_to_file(

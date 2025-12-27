@@ -112,13 +112,15 @@ class TestDocxTemplateView:
     ):
         """Test GET request uses get_context_data_with_docx when defined."""
         received_docx = None
+        received_tmp_dir = None
 
         class TestView(DocxTemplateView):
             template_name = simple_docx_template
 
-            def get_context_data_with_docx(self, docx, **kwargs):
-                nonlocal received_docx
+            def get_context_data_with_docx(self, docx, tmp_dir, **kwargs):
+                nonlocal received_docx, received_tmp_dir
                 received_docx = docx
+                received_tmp_dir = tmp_dir
                 return {"name": "FromDocx", "title": "Title"}
 
         view = TestView()
@@ -128,10 +130,14 @@ class TestDocxTemplateView:
 
         response = view.get(get_request)
 
+        from pathlib import Path
+
         from docxtpl import DocxTemplate
 
         assert received_docx is not None
         assert isinstance(received_docx, DocxTemplate)
+        assert received_tmp_dir is not None
+        assert isinstance(received_tmp_dir, Path)
         assert response.status_code == 200
 
     def test_get_context_data_with_docx_receives_url_kwargs(
@@ -143,7 +149,7 @@ class TestDocxTemplateView:
         class TestView(DocxTemplateView):
             template_name = simple_docx_template
 
-            def get_context_data_with_docx(self, docx, **kwargs):
+            def get_context_data_with_docx(self, docx, tmp_dir, **kwargs):
                 nonlocal received_kwargs
                 received_kwargs = kwargs
                 return {"name": "Test", "title": "Title"}

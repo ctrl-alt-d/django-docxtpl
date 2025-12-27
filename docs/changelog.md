@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2025-12-27
+
+### Changed
+- **Breaking:** Callable context now receives two parameters: `(docx, tmp_dir)` instead of just `(docx)`
+- `get_context_data_with_docx(docx, tmp_dir, **kwargs)` method signature updated to include `tmp_dir` parameter
+
+### Added
+- `tmp_dir` parameter (a `Path` to a temporary directory) passed to callable context functions
+- Temporary directory is automatically created before rendering and cleaned up after
+- Enables generating temporary files (e.g., chart images) that are needed during template rendering
+
 ## [0.7.0] - 2025-12-27
 
 - Fix readme documentation
@@ -81,7 +92,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Django >= 4.2
 - docxtpl >= 0.16
 
-[Unreleased]: https://github.com/ctrl-alt-d/django-docxtpl/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/ctrl-alt-d/django-docxtpl/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/ctrl-alt-d/django-docxtpl/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/ctrl-alt-d/django-docxtpl/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/ctrl-alt-d/django-docxtpl/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/ctrl-alt-d/django-docxtpl/compare/v0.4.0...v0.5.0

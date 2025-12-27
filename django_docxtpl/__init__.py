@@ -38,7 +38,7 @@ from django_docxtpl.response import ContextType, DocxTemplateResponse
 from django_docxtpl.utils import OutputFormat, render_to_file
 from django_docxtpl.views import DocxTemplateDetailView, DocxTemplateView
 
-__version__ = "0.7.0"
+__version__ = "0.8.0"
 __all__ = [
     # Response
     "DocxTemplateResponse",

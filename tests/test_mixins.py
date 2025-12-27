@@ -319,6 +319,9 @@ class TestGetContextDataWithDocx:
         self, simple_docx_template
     ):
         """Test that default get_context_data_with_docx returns None."""
+        import tempfile
+        from pathlib import Path
+
         from docxtpl import DocxTemplate
 
         class TestView(DocxTemplateResponseMixin, View):
@@ -326,18 +329,22 @@ class TestGetContextDataWithDocx:
 
         view = TestView()
         doc = DocxTemplate(simple_docx_template)
-        result = view.get_context_data_with_docx(doc)
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            result = view.get_context_data_with_docx(doc, Path(tmp_dir))
 
         assert result is None
 
     def test_get_context_data_with_docx_override(self, simple_docx_template):
         """Test that get_context_data_with_docx can be overridden."""
+        import tempfile
+        from pathlib import Path
+
         from docxtpl import DocxTemplate
 
         class TestView(DocxTemplateResponseMixin, View):
             template_name = simple_docx_template
 
-            def get_context_data_with_docx(self, docx, **kwargs):
+            def get_context_data_with_docx(self, docx, tmp_dir, **kwargs):
                 return {
                     "name": "FromDocx",
                     "title": "DocxTitle",
@@ -346,7 +353,8 @@ class TestGetContextDataWithDocx:
 
         view = TestView()
         doc = DocxTemplate(simple_docx_template)
-        result = view.get_context_data_with_docx(doc)
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            result = view.get_context_data_with_docx(doc, Path(tmp_dir))
 
         assert result == {
             "name": "FromDocx",
@@ -356,17 +364,23 @@ class TestGetContextDataWithDocx:
 
     def test_get_context_data_with_docx_receives_kwargs(self, simple_docx_template):
         """Test that get_context_data_with_docx receives kwargs."""
+        import tempfile
+        from pathlib import Path
+
         from docxtpl import DocxTemplate
 
         class TestView(DocxTemplateResponseMixin, View):
             template_name = simple_docx_template
 
-            def get_context_data_with_docx(self, docx, **kwargs):
+            def get_context_data_with_docx(self, docx, tmp_dir, **kwargs):
                 return {"received_kwargs": kwargs}
 
         view = TestView()
         doc = DocxTemplate(simple_docx_template)
-        result = view.get_context_data_with_docx(doc, pk=123, slug="test")
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            result = view.get_context_data_with_docx(
+                doc, Path(tmp_dir), pk=123, slug="test"
+            )
 
         assert result == {"received_kwargs": {"pk": 123, "slug": "test"}}
 
@@ -375,13 +389,15 @@ class TestGetContextDataWithDocx:
     ):
         """Test that render_to_response uses get_context_data_with_docx when defined."""
         received_docx = None
+        received_tmp_dir = None
 
         class TestView(DocxTemplateResponseMixin, View):
             template_name = simple_docx_template
 
-            def get_context_data_with_docx(self, docx, **kwargs):
-                nonlocal received_docx
+            def get_context_data_with_docx(self, docx, tmp_dir, **kwargs):
+                nonlocal received_docx, received_tmp_dir
                 received_docx = docx
+                received_tmp_dir = tmp_dir
                 return {"name": "WithDocx", "title": "Title"}
 
         view = TestView()
@@ -389,10 +405,14 @@ class TestGetContextDataWithDocx:
 
         response = view.render_to_response()
 
+        from pathlib import Path
+
         from docxtpl import DocxTemplate
 
         assert received_docx is not None
         assert isinstance(received_docx, DocxTemplate)
+        assert received_tmp_dir is not None
+        assert isinstance(received_tmp_dir, Path)
         assert response.status_code == 200
 
     def test_render_to_response_falls_back_to_get_context_data(
@@ -430,7 +450,7 @@ class TestGetContextDataWithDocx:
             def get_context_data(self, **kwargs):
                 return {"name": "NormalMethod", "title": "Title1"}
 
-            def get_context_data_with_docx(self, docx, **kwargs):
+            def get_context_data_with_docx(self, docx, tmp_dir, **kwargs):
                 return {"name": "DocxMethod", "title": "Title2"}
 
         view = TestView()
@@ -458,7 +478,7 @@ class TestGetContextDataWithDocx:
             def get_context_data(self, **kwargs):
                 return {"name": "FromMethod", "title": "Title"}
 
-            def get_context_data_with_docx(self, docx, **kwargs):
+            def get_context_data_with_docx(self, docx, tmp_dir, **kwargs):
                 return {"name": "FromDocxMethod", "title": "Title"}
 
         view = TestView()

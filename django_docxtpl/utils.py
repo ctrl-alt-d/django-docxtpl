@@ -156,8 +156,8 @@ def get_template_dir() -> Path | None:
     return None
 
 
-# Type alias for context: can be a dict or a callable that receives DocxTemplate
-ContextType = dict[str, Any] | Callable[["DocxTemplate"], dict[str, Any]]
+# Type alias for context: dict or callable(DocxTemplate, tmp_dir) -> dict
+ContextType = dict[str, Any] | Callable[["DocxTemplate", Path], dict[str, Any]]
 
 
 def render_to_file(
@@ -180,9 +180,10 @@ def render_to_file(
         template: Path to the DOCX template file (absolute or relative to
                  DOCXTPL_TEMPLATE_DIR).
         context: Dictionary of context variables for template rendering, or
-                a callable that receives the DocxTemplate instance and returns
-                a context dictionary. Use a callable when you need to create
-                objects that require the template instance (e.g., InlineImage).
+                a callable that receives the DocxTemplate instance and a Path
+                to a temporary directory, and returns a context dictionary.
+                Use a callable when you need to create objects that require
+                the template instance (e.g., InlineImage) or temporary files.
         output_dir: Directory where the output file will be saved.
         filename: Output filename without extension.
         output_format: Desired output format (docx, pdf, odt, html, txt).
@@ -219,7 +220,7 @@ def render_to_file(
         from docxtpl import InlineImage
         from docx.shared import Mm
 
-        def build_context(docx):
+        def build_context(docx, tmp_dir):
             return {
                 "title": "Report",
                 "chart": InlineImage(docx, "chart.png", width=Mm(150)),
@@ -274,22 +275,27 @@ def render_to_file(
     if not template_path.exists():
         raise FileNotFoundError(f"Template not found: {template_path}")
 
-    # Load the template
-    doc = DocxTemplate(template_path)
+    import tempfile  # pylint: disable=import-outside-toplevel
 
-    # Resolve context: if callable, call it with the doc instance
-    if callable(context):
-        resolved_context = context(doc)
-    else:
-        resolved_context = context
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        tmp_dir_path = Path(tmp_dir)
 
-    # Render the template with optional custom jinja_env and autoescape
-    doc.render(resolved_context, jinja_env=jinja_env, autoescape=autoescape)
+        # Load the template
+        doc = DocxTemplate(template_path)
 
-    # Save to BytesIO
-    docx_buffer = BytesIO()
-    doc.save(docx_buffer)
-    docx_buffer.seek(0)
+        # Resolve context: if callable, call it with doc and tmp_dir
+        if callable(context):
+            resolved_context = context(doc, tmp_dir_path)
+        else:
+            resolved_context = context
+
+        # Render the template with optional custom jinja_env and autoescape
+        doc.render(resolved_context, jinja_env=jinja_env, autoescape=autoescape)
+
+        # Save to BytesIO
+        docx_buffer = BytesIO()
+        doc.save(docx_buffer)
+        docx_buffer.seek(0)
 
     # Process the document
     if output_format == "docx":

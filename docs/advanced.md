@@ -265,7 +265,7 @@ First, add a placeholder in your template:
 
 ### Class-Based View (Recommended)
 
-Use `get_context_data_with_docx()` to get access to the `DocxTemplate` instance:
+Use `get_context_data_with_docx()` to get access to the `DocxTemplate` instance and temporary directory:
 
 ```python
 from docxtpl import InlineImage
@@ -277,8 +277,8 @@ class DocumentWithLogoView(DocxTemplateView):
     filename = "report"
     output_format = "pdf"
 
-    def get_context_data_with_docx(self, docx, **kwargs):
-        """Build context with access to DocxTemplate instance."""
+    def get_context_data_with_docx(self, docx, tmp_dir, **kwargs):
+        """Build context with access to DocxTemplate and temp directory."""
         return {
             "title": "Company Report",
             "logo": InlineImage(
@@ -304,7 +304,7 @@ from docx.shared import Mm
 from django_docxtpl import DocxTemplateResponse
 
 def document_with_image(request):
-    def build_context(docx):
+    def build_context(docx, tmp_dir):
         return {
             "title": "Company Report",
             "logo": InlineImage(
@@ -325,7 +325,7 @@ def document_with_image(request):
 
 ### Background Tasks (render_to_file)
 
-Use a callable with `render_to_file` for background document generation:
+Use a callable with `render_to_file` for background document generation. The temporary directory is useful for generated images:
 
 ```python
 from huey.contrib.djhuey import task
@@ -337,12 +337,15 @@ from django_docxtpl import render_to_file
 def generate_report_with_chart(report_id, output_dir):
     """Generate a report with embedded chart image."""
     report = Report.objects.get(pk=report_id)
-    chart_path = generate_chart_image(report)  # Your chart generation logic
 
-    def build_context(docx):
+    def build_context(docx, tmp_dir):
+        # Generate chart to temp directory (auto-cleaned after render)
+        chart_path = tmp_dir / "chart.png"
+        generate_chart_image(report, chart_path)
+        
         return {
             "title": report.title,
-            "chart": InlineImage(docx, image_descriptor=chart_path, width=Mm(150)),
+            "chart": InlineImage(docx, image_descriptor=str(chart_path), width=Mm(150)),
             "data": report.data,
         }
 
@@ -369,7 +372,7 @@ class InvoiceView(DocxTemplateView):
     template_name = "invoices/invoice.docx"
     output_format = "pdf"
 
-    def get_context_data_with_docx(self, docx, **kwargs):
+    def get_context_data_with_docx(self, docx, tmp_dir, **kwargs):
         # Get base context from parent (includes object for DetailView)
         invoice = Invoice.objects.get(pk=kwargs.get("pk"))
         
@@ -398,7 +401,7 @@ import requests
 from docxtpl import InlineImage
 from docx.shared import Mm
 
-def get_context_data_with_docx(self, docx, **kwargs):
+def get_context_data_with_docx(self, docx, tmp_dir, **kwargs):
     # From file path
     logo = InlineImage(docx, "static/logo.png", width=Mm(30))
     
@@ -411,10 +414,16 @@ def get_context_data_with_docx(self, docx, **kwargs):
     image_buffer = BytesIO(response.content)
     remote_image = InlineImage(docx, image_buffer, width=Mm(50))
     
+    # Using temp directory for generated files
+    generated_path = tmp_dir / "generated.png"
+    generate_image(generated_path)
+    generated = InlineImage(docx, str(generated_path), width=Mm(60))
+    
     return {
         "logo": logo,
         "chart": chart,
         "remote_image": remote_image,
+        "generated": generated,
     }
 ```
 

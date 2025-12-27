@@ -194,8 +194,8 @@ class ReportWithLogoView(DocxTemplateView):
     template_name = "reports/report.docx"
     output_format = "pdf"
 
-    def get_context_data_with_docx(self, docx, **kwargs):
-        """Build context with access to DocxTemplate instance."""
+    def get_context_data_with_docx(self, docx, tmp_dir, **kwargs):
+        """Build context with access to DocxTemplate and temp directory."""
         return {
             "title": "Annual Report",
             "logo": InlineImage(docx, "static/logo.png", width=Mm(30)),
@@ -210,7 +210,7 @@ from docx.shared import Mm
 from django_docxtpl import DocxTemplateResponse
 
 def report_with_image(request):
-    def build_context(docx):
+    def build_context(docx, tmp_dir):
         return {
             "title": "Report",
             "logo": InlineImage(docx, "static/logo.png", width=Mm(30)),
@@ -219,7 +219,7 @@ def report_with_image(request):
     return DocxTemplateResponse(
         request,
         template="reports/report.docx",
-        context=build_context,  # Callable receives DocxTemplate instance
+        context=build_context,  # Callable receives DocxTemplate and tmp_dir Path
         output_format="pdf",
     )
 ```
@@ -294,7 +294,7 @@ def generate_report_to_disk(output_dir, filename, context):
 DocxTemplateResponse(
     request,
     template,           # Path to .docx template
-    context=None,       # Template context dict or callable(docx) -> dict
+    context=None,       # Template context dict or callable(docx, tmp_dir) -> dict
     filename="document",# Output filename (without extension)
     output_format="docx",# Output format
     as_attachment=True, # Download as attachment or inline
@@ -320,7 +320,7 @@ Override methods:
 - `get_update_fields()` - Dynamic field update control
 - `get_autoescape()` - Dynamic autoescape control
 - `get_context_data(**kwargs)` - Provide template context
-- `get_context_data_with_docx(docx, **kwargs)` - Provide context with DocxTemplate access (for InlineImage, etc.)
+- `get_context_data_with_docx(docx, tmp_dir, **kwargs)` - Provide context with DocxTemplate and temp directory access (for InlineImage, generated images, etc.)
 
 ### DocxTemplateDetailView
 

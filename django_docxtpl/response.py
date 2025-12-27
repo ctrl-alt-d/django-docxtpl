@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import tempfile
 from collections.abc import Callable
 from io import BytesIO
 from pathlib import Path
@@ -19,8 +20,8 @@ from django_docxtpl.utils import (
     get_template_dir,
 )
 
-# Type alias for context: can be a dict or a callable that receives DocxTemplate
-ContextType = dict[str, Any] | Callable[[DocxTemplate], dict[str, Any]]
+# Type alias for context: dict or callable(DocxTemplate, tmp_dir) -> dict
+ContextType = dict[str, Any] | Callable[[DocxTemplate, Path], dict[str, Any]]
 
 
 class DocxTemplateResponse(HttpResponse):
@@ -63,9 +64,10 @@ class DocxTemplateResponse(HttpResponse):
             template: Path to the DOCX template file. Can be absolute or relative
                      to DOCXTPL_TEMPLATE_DIR setting.
             context: Dictionary of context variables for template rendering, or
-                    a callable that receives the DocxTemplate instance and returns
-                    a context dictionary. Use a callable when you need to create
-                    objects that require the template instance (e.g., InlineImage).
+                    a callable that receives the DocxTemplate instance and a Path
+                    to a temporary directory, and returns a context dictionary.
+                    Use a callable when you need to create objects that require
+                    the template instance (e.g., InlineImage) or temporary files.
             filename: Output filename without extension (extension added automatically).
             output_format: Desired output format (docx, pdf, odt, html, txt).
             as_attachment: If True, sets Content-Disposition to attachment.
@@ -147,7 +149,8 @@ class DocxTemplateResponse(HttpResponse):
         Args:
             template: Path to the template file.
             context: Context dictionary for rendering, or a callable that
-                    receives the DocxTemplate instance and returns a dict.
+                    receives the DocxTemplate instance and a temporary directory
+                    Path, and returns a dict.
             output_format: Desired output format.
             update_fields: If True, update all fields (TOC, charts, etc.)
                           using LibreOffice.
@@ -159,22 +162,25 @@ class DocxTemplateResponse(HttpResponse):
         """
         template_path = self._resolve_template_path(template)
 
-        # Load the template
-        doc = DocxTemplate(template_path)
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_dir_path = Path(tmp_dir)
 
-        # Resolve context: if callable, call it with the doc instance
-        if callable(context):
-            resolved_context = context(doc)
-        else:
-            resolved_context = context
+            # Load the template
+            doc = DocxTemplate(template_path)
 
-        # Render the template with optional custom jinja_env and autoescape
-        doc.render(resolved_context, jinja_env=jinja_env, autoescape=autoescape)
+            # Resolve context: if callable, call it with doc and tmp_dir
+            if callable(context):
+                resolved_context = context(doc, tmp_dir_path)
+            else:
+                resolved_context = context
 
-        # Save to BytesIO
-        docx_buffer = BytesIO()
-        doc.save(docx_buffer)
-        docx_buffer.seek(0)
+            # Render the template with optional custom jinja_env and autoescape
+            doc.render(resolved_context, jinja_env=jinja_env, autoescape=autoescape)
+
+            # Save to BytesIO
+            docx_buffer = BytesIO()
+            doc.save(docx_buffer)
+            docx_buffer.seek(0)
 
         # If output format is DOCX and no field update needed, return directly
         if output_format == "docx" and not update_fields:

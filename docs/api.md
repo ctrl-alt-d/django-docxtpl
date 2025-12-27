@@ -30,7 +30,7 @@ response = DocxTemplateResponse(
 |-----------|------|---------|-------------|
 | `request` | `HttpRequest` | required | The Django request object |
 | `template` | `str \| Path` | required | Path to the DOCX template file |
-| `context` | `dict \| Callable \| None` | `None` | Context dictionary or callable that receives `DocxTemplate` instance |
+| `context` | `dict \| Callable \| None` | `None` | Context dictionary or callable that receives `DocxTemplate` and `tmp_dir` Path |
 | `filename` | `str` | `"document"` | Output filename (without extension) |
 | `output_format` | `OutputFormat` | `"docx"` | Output format: `"docx"`, `"pdf"`, `"odt"`, `"html"`, `"txt"` |
 | `as_attachment` | `bool` | `True` | If `True`, browser downloads file; if `False`, displays inline |
@@ -39,13 +39,13 @@ response = DocxTemplateResponse(
 | `autoescape` | `bool` | `False` | If `True`, enables Jinja2 autoescaping to escape HTML/XML special characters |
 | `**kwargs` | | | Additional arguments passed to `HttpResponse` |
 
-**Context as callable:** When `context` is a callable, it receives the `DocxTemplate` instance as its argument. This allows creating `InlineImage`, `RichText`, and other objects that require the template instance:
+**Context as callable:** When `context` is a callable, it receives the `DocxTemplate` instance and a `Path` to a temporary directory as arguments. This allows creating `InlineImage`, `RichText`, and other objects that require the template instance, as well as generating temporary files (like images):
 
 ```python
 from docxtpl import InlineImage
 from docx.shared import Mm
 
-def build_context(docx):
+def build_context(docx, tmp_dir):
     return {
         "title": "Report",
         "logo": InlineImage(docx, "logo.png", width=Mm(30)),
@@ -189,9 +189,9 @@ def get_context_data(self, **kwargs):
     return context
 ```
 
-##### get_context_data_with_docx(docx, **kwargs) → dict | None
+##### get_context_data_with_docx(docx, tmp_dir, **kwargs) → dict | None
 
-Returns the context dictionary with access to the `DocxTemplate` instance. Use this when you need to create `InlineImage`, `RichText`, `Subdoc`, or other docxtpl objects that require the template instance.
+Returns the context dictionary with access to the `DocxTemplate` instance and a temporary directory. Use this when you need to create `InlineImage`, `RichText`, `Subdoc`, or other docxtpl objects that require the template instance, or when you need to generate temporary files.
 
 If this method returns a non-`None` value, it takes precedence over `get_context_data()`.
 
@@ -199,7 +199,7 @@ If this method returns a non-`None` value, it takes precedence over `get_context
 from docxtpl import InlineImage, RichText
 from docx.shared import Mm
 
-def get_context_data_with_docx(self, docx, **kwargs):
+def get_context_data_with_docx(self, docx, tmp_dir, **kwargs):
     return {
         "title": "Report with Images",
         "logo": InlineImage(docx, "static/logo.png", width=Mm(30)),
@@ -210,6 +210,7 @@ def get_context_data_with_docx(self, docx, **kwargs):
 
 **Parameters:**
 - `docx` (`DocxTemplate`): The template instance being rendered
+- `tmp_dir` (`Path`): Path to a temporary directory (auto-cleaned after rendering)
 - `**kwargs`: URL keyword arguments (e.g., `pk`, `slug`)
 
 ##### render_to_response(context=None) → HttpResponse
@@ -424,7 +425,7 @@ print(f"Report saved to: {output_path}")
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `template` | `str \| Path` | required | Path to the DOCX template (absolute or relative to `DOCXTPL_TEMPLATE_DIR`) |
-| `context` | `dict \| Callable` | required | Context dictionary or callable that receives `DocxTemplate` instance |
+| `context` | `dict \| Callable` | required | Context dictionary or callable that receives `DocxTemplate` and `tmp_dir` Path |
 | `output_dir` | `str \| Path` | required | Directory where the output file will be saved |
 | `filename` | `str` | required | Output filename (without extension) |
 | `output_format` | `OutputFormat` | `"docx"` | Output format: `"docx"`, `"pdf"`, `"odt"`, `"html"`, `"txt"` |
@@ -432,14 +433,14 @@ print(f"Report saved to: {output_path}")
 | `jinja_env` | `Environment \| None` | `None` | Custom Jinja2 Environment with filters, globals, or other configuration |
 | `autoescape` | `bool` | `False` | Enable Jinja2 autoescaping to escape HTML/XML special characters |
 
-**Context as callable:** When `context` is a callable, it receives the `DocxTemplate` instance, allowing you to use `InlineImage` and other objects that require the template:
+**Context as callable:** When `context` is a callable, it receives the `DocxTemplate` instance and a temporary directory path, allowing you to use `InlineImage` and other objects that require the template, as well as generate temporary files:
 
 ```python
 from docxtpl import InlineImage
 from docx.shared import Mm
 from django_docxtpl import render_to_file
 
-def build_context(docx):
+def build_context(docx, tmp_dir):
     return {
         "title": "Report",
         "chart": InlineImage(docx, "chart.png", width=Mm(150)),

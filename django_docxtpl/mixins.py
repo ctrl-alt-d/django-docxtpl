@@ -153,18 +153,22 @@ class DocxTemplateResponseMixin:
         return kwargs
 
     def get_context_data_with_docx(
-        self, docx: DocxTemplate, **kwargs: Any
+        self, docx: DocxTemplate, tmp_dir: Path, **kwargs: Any
     ) -> dict[str, Any] | None:
         """Return the context dictionary with access to the DocxTemplate instance.
 
         Override this method when you need to create objects that require the
-        DocxTemplate instance, such as InlineImage, RichText, or Subdoc.
+        DocxTemplate instance, such as InlineImage, RichText, or Subdoc, or
+        when you need to create temporary files for the template.
 
         If this method returns a non-None value, it takes precedence over
         get_context_data().
 
         Args:
             docx: The DocxTemplate instance being rendered.
+            tmp_dir: Path to a temporary directory that will be automatically
+                    cleaned up after rendering. Use this for temporary files
+                    like generated images.
             **kwargs: Additional context variables (typically URL kwargs).
 
         Returns:
@@ -178,7 +182,11 @@ class DocxTemplateResponseMixin:
             class MyDocumentView(DocxTemplateView):
                 template_name = "document.docx"
 
-                def get_context_data_with_docx(self, docx, **kwargs):
+                def get_context_data_with_docx(self, docx, tmp_dir, **kwargs):
+                    # Generate chart image to temp directory
+                    chart_path = tmp_dir / "chart.png"
+                    create_chart(chart_path)
+
                     return {
                         "name": self.request.user.get_full_name(),
                         "logo": InlineImage(
@@ -186,22 +194,23 @@ class DocxTemplateResponseMixin:
                             image_descriptor="path/to/logo.png",
                             width=Mm(50)
                         ),
+                        "chart": InlineImage(docx, str(chart_path), width=Mm(100)),
                     }
         """
         return None
 
     def _build_context_callable(
         self, **kwargs: Any
-    ) -> Callable[[DocxTemplate], dict[str, Any]]:
+    ) -> Callable[[DocxTemplate, Path], dict[str, Any]]:
         """Build a context callable that tries get_context_data_with_docx first.
 
         Returns:
-            A callable that receives DocxTemplate and returns the context dict.
+            A callable that receives DocxTemplate and tmp_dir, returns context.
         """
 
-        def context_builder(docx: DocxTemplate) -> dict[str, Any]:
+        def context_builder(docx: DocxTemplate, tmp_dir: Path) -> dict[str, Any]:
             # Try get_context_data_with_docx first
-            context = self.get_context_data_with_docx(docx, **kwargs)
+            context = self.get_context_data_with_docx(docx, tmp_dir, **kwargs)
             if context is not None:
                 return context
             # Fall back to get_context_data
