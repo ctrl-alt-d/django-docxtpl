@@ -36,6 +36,7 @@ response = DocxTemplateResponse(
 | `as_attachment` | `bool` | `True` | If `True`, browser downloads file; if `False`, displays inline |
 | `update_fields` | `bool` | `False` | If `True`, updates TOC, charts, and other dynamic fields using LibreOffice |
 | `jinja_env` | `Environment \| None` | `None` | Custom Jinja2 Environment with filters, globals, or other configuration |
+| `autoescape` | `bool` | `False` | If `True`, enables Jinja2 autoescaping to escape HTML/XML special characters |
 | `**kwargs` | | | Additional arguments passed to `HttpResponse` |
 
 **Context as callable:** When `context` is a callable, it receives the `DocxTemplate` instance as its argument. This allows creating `InlineImage`, `RichText`, and other objects that require the template instance:
@@ -106,6 +107,7 @@ class MyDocumentView(DocxTemplateView):
 | `output_format` | `OutputFormat` | `"docx"` | Output format |
 | `as_attachment` | `bool` | `True` | Download as attachment |
 | `update_fields` | `bool` | `False` | Update TOC, charts, and dynamic fields |
+| `autoescape` | `bool` | `False` | Enable Jinja2 autoescaping |
 | `jinja_env` | `Environment \| None` | `None` | Custom Jinja2 Environment with filters |
 
 #### Methods
@@ -163,6 +165,16 @@ def get_jinja_env(self):
     env = Environment(autoescape=True)
     env.filters["currency"] = format_currency
     return env
+```
+
+##### get_autoescape() → bool
+
+Returns whether to enable Jinja2 autoescaping when rendering. Override for dynamic control.
+
+```python
+def get_autoescape(self):
+    # Enable autoescaping when context contains user input
+    return self.has_user_content
 ```
 
 ##### get_context_data(**kwargs) → dict
@@ -418,6 +430,7 @@ print(f"Report saved to: {output_path}")
 | `output_format` | `OutputFormat` | `"docx"` | Output format: `"docx"`, `"pdf"`, `"odt"`, `"html"`, `"txt"` |
 | `update_fields` | `bool` | `False` | Update TOC, charts, and dynamic fields |
 | `jinja_env` | `Environment \| None` | `None` | Custom Jinja2 Environment with filters, globals, or other configuration |
+| `autoescape` | `bool` | `False` | Enable Jinja2 autoescaping to escape HTML/XML special characters |
 
 **Context as callable:** When `context` is a callable, it receives the `DocxTemplate` instance, allowing you to use `InlineImage` and other objects that require the template:
 

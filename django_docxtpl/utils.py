@@ -169,6 +169,7 @@ def render_to_file(
     *,
     update_fields: bool = False,
     jinja_env: Any | None = None,
+    autoescape: bool = False,
 ) -> Path:
     """Render a DOCX template and save to a file.
 
@@ -189,6 +190,9 @@ def render_to_file(
         jinja_env: Optional Jinja2 Environment instance with custom filters,
                   globals, or other configuration. If not provided, docxtpl
                   will create a default Environment.
+        autoescape: If True, enable Jinja2 autoescaping when rendering the
+                   template. This escapes HTML/XML special characters in
+                   context values. Default is False.
 
     Returns:
         Absolute path to the generated file.
@@ -279,8 +283,8 @@ def render_to_file(
     else:
         resolved_context = context
 
-    # Render the template with optional custom jinja_env
-    doc.render(resolved_context, jinja_env=jinja_env)
+    # Render the template with optional custom jinja_env and autoescape
+    doc.render(resolved_context, jinja_env=jinja_env, autoescape=autoescape)
 
     # Save to BytesIO
     docx_buffer = BytesIO()

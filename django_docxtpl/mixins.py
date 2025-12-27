@@ -28,6 +28,7 @@ class DocxTemplateResponseMixin:
         output_format: Desired output format (docx, pdf, odt, html, txt).
         as_attachment: Whether to serve as attachment or inline.
         update_fields: Whether to update TOC, charts, and other fields.
+        autoescape: Whether to enable Jinja2 autoescaping when rendering.
 
     Example:
         class InvoiceView(DocxTemplateResponseMixin, View):
@@ -51,6 +52,7 @@ class DocxTemplateResponseMixin:
     output_format: OutputFormat = "docx"
     as_attachment: bool = True
     update_fields: bool = False
+    autoescape: bool = False
     jinja_env: Environment | None = None
     request: HttpRequest  # Type hint for the request attribute from View
 
@@ -120,6 +122,21 @@ class DocxTemplateResponseMixin:
             Jinja2 Environment instance or None to use the default.
         """
         return self.jinja_env
+
+    def get_autoescape(self) -> bool:
+        """Return whether to enable Jinja2 autoescaping when rendering.
+
+        When True, HTML/XML special characters in context values will be
+        automatically escaped. This is useful for preventing XSS when
+        context values might contain user input.
+
+        Override this method to dynamically determine if autoescaping
+        should be enabled.
+
+        Returns:
+            True if autoescaping should be enabled, False otherwise.
+        """
+        return self.autoescape
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         """Return the context dictionary for template rendering.
@@ -222,4 +239,5 @@ class DocxTemplateResponseMixin:
             as_attachment=self.as_attachment,
             update_fields=self.get_update_fields(),
             jinja_env=self.get_jinja_env(),
+            autoescape=self.get_autoescape(),
         )

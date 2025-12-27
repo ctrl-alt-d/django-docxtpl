@@ -53,6 +53,7 @@ class DocxTemplateResponse(HttpResponse):
         as_attachment: bool = True,
         update_fields: bool = False,
         jinja_env: Environment | None = None,
+        autoescape: bool = False,
         **kwargs: Any,
     ) -> None:
         """Initialize the DocxTemplateResponse.
@@ -73,11 +74,14 @@ class DocxTemplateResponse(HttpResponse):
                           LibreOffice even for DOCX output format.
             jinja_env: Custom Jinja2 Environment instance with filters, globals, etc.
                       Use this to add custom filters or configure Jinja2 behavior.
+            autoescape: If True, enable Jinja2 autoescaping when rendering the
+                       template. This escapes HTML/XML special characters in
+                       context values. Default is False.
             **kwargs: Additional arguments passed to HttpResponse.
         """
         # Generate the document content
         content = self._render_document(
-            template, context or {}, output_format, update_fields, jinja_env
+            template, context or {}, output_format, update_fields, jinja_env, autoescape
         )
 
         # Set content type
@@ -136,6 +140,7 @@ class DocxTemplateResponse(HttpResponse):
         output_format: OutputFormat,
         update_fields: bool = False,
         jinja_env: Environment | None = None,
+        autoescape: bool = False,
     ) -> bytes:
         """Render the DOCX template and optionally convert to another format.
 
@@ -147,6 +152,7 @@ class DocxTemplateResponse(HttpResponse):
             update_fields: If True, update all fields (TOC, charts, etc.)
                           using LibreOffice.
             jinja_env: Custom Jinja2 Environment for template rendering.
+            autoescape: If True, enable Jinja2 autoescaping when rendering.
 
         Returns:
             The rendered document as bytes.
@@ -162,8 +168,8 @@ class DocxTemplateResponse(HttpResponse):
         else:
             resolved_context = context
 
-        # Render the template with optional custom jinja_env
-        doc.render(resolved_context, jinja_env=jinja_env)
+        # Render the template with optional custom jinja_env and autoescape
+        doc.render(resolved_context, jinja_env=jinja_env, autoescape=autoescape)
 
         # Save to BytesIO
         docx_buffer = BytesIO()

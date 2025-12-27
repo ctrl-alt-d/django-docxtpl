@@ -581,3 +581,80 @@ class TestJinjaEnvMixin:
         with ZipFile(docx_content) as zf:
             doc_xml = zf.read("word/document.xml").decode("utf-8")
             assert "1.234.567" in doc_xml
+
+
+class TestAutoescapeMixin:
+    """Tests for autoescape support in DocxTemplateResponseMixin."""
+
+    def test_get_autoescape_default(self, simple_docx_template):
+        """Test get_autoescape returns False by default."""
+
+        class TestView(DocxTemplateResponseMixin, View):
+            template_name = simple_docx_template
+
+        view = TestView()
+        assert view.get_autoescape() is False
+
+    def test_get_autoescape_attribute(self, simple_docx_template):
+        """Test get_autoescape returns autoescape attribute."""
+
+        class TestView(DocxTemplateResponseMixin, View):
+            template_name = simple_docx_template
+            autoescape = True
+
+        view = TestView()
+        assert view.get_autoescape() is True
+
+    def test_get_autoescape_override(self, simple_docx_template):
+        """Test get_autoescape can be overridden."""
+
+        class TestView(DocxTemplateResponseMixin, View):
+            template_name = simple_docx_template
+
+            def get_autoescape(self):
+                return True
+
+        view = TestView()
+        assert view.get_autoescape() is True
+
+    def test_render_to_response_passes_autoescape(
+        self, get_request, simple_docx_template
+    ):
+        """Test render_to_response passes autoescape to response."""
+
+        class TestView(DocxTemplateResponseMixin, View):
+            template_name = simple_docx_template
+            autoescape = True
+
+        view = TestView()
+        view.request = get_request
+
+        with patch("django_docxtpl.mixins.DocxTemplateResponse") as mock_response:
+            mock_response.return_value = MagicMock(status_code=200)
+
+            view.render_to_response({"name": "Test", "title": "Title"})
+
+            mock_response.assert_called_once()
+            _, kwargs = mock_response.call_args
+            assert kwargs.get("autoescape") is True
+
+    def test_dynamic_autoescape(self, get_request, simple_docx_template):
+        """Test dynamically determining autoescape."""
+
+        class TestView(DocxTemplateResponseMixin, View):
+            template_name = simple_docx_template
+            has_user_input = False
+
+            def get_autoescape(self):
+                # Enable autoescape when context has user input
+                return self.has_user_input
+
+        view = TestView()
+        view.request = get_request
+
+        # Default has_user_input is False
+        assert view.get_autoescape() is False
+
+        # Change has_user_input
+        view.has_user_input = True
+        assert view.get_autoescape() is True

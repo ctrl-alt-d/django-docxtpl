@@ -1,7 +1,7 @@
 """Tests for django_docxtpl.utils module."""
 
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -426,3 +426,70 @@ class TestRenderToFileCallableContext:
         )
 
         assert output_path.exists()
+
+
+class TestRenderToFileAutoescape:
+    """Tests for autoescape parameter in render_to_file."""
+
+    def test_render_to_file_autoescape_default_is_false(
+        self, simple_docx_template, tmp_path
+    ):
+        """Test that autoescape is False by default."""
+        with patch("docxtpl.DocxTemplate") as mock_docx:
+            mock_instance = MagicMock()
+            mock_docx.return_value = mock_instance
+            mock_instance.save = MagicMock(side_effect=lambda buf: buf.write(b"PK"))
+
+            render_to_file(
+                template=simple_docx_template,
+                context={"name": "Test", "title": "Title"},
+                output_dir=tmp_path,
+                filename="test_autoescape",
+                output_format="docx",
+            )
+
+            mock_instance.render.assert_called_once()
+            _, kwargs = mock_instance.render.call_args
+            assert kwargs.get("autoescape") is False
+
+    def test_render_to_file_autoescape_true(self, simple_docx_template, tmp_path):
+        """Test that autoescape=True is passed to doc.render()."""
+        with patch("docxtpl.DocxTemplate") as mock_docx:
+            mock_instance = MagicMock()
+            mock_docx.return_value = mock_instance
+            mock_instance.save = MagicMock(side_effect=lambda buf: buf.write(b"PK"))
+
+            render_to_file(
+                template=simple_docx_template,
+                context={"name": "Test", "title": "Title"},
+                output_dir=tmp_path,
+                filename="test_autoescape",
+                output_format="docx",
+                autoescape=True,
+            )
+
+            mock_instance.render.assert_called_once()
+            _, kwargs = mock_instance.render.call_args
+            assert kwargs.get("autoescape") is True
+
+    def test_render_to_file_autoescape_false_explicitly(
+        self, simple_docx_template, tmp_path
+    ):
+        """Test that autoescape=False is passed explicitly."""
+        with patch("docxtpl.DocxTemplate") as mock_docx:
+            mock_instance = MagicMock()
+            mock_docx.return_value = mock_instance
+            mock_instance.save = MagicMock(side_effect=lambda buf: buf.write(b"PK"))
+
+            render_to_file(
+                template=simple_docx_template,
+                context={"name": "Test", "title": "Title"},
+                output_dir=tmp_path,
+                filename="test_autoescape",
+                output_format="docx",
+                autoescape=False,
+            )
+
+            mock_instance.render.assert_called_once()
+            _, kwargs = mock_instance.render.call_args
+            assert kwargs.get("autoescape") is False

@@ -22,6 +22,7 @@ class DocxTemplateView(DocxTemplateResponseMixin, View):
         output_format: Desired output format (docx, pdf, odt, html, txt).
         as_attachment: Whether to serve as attachment or inline.
         update_fields: Whether to update TOC, charts, and other fields.
+        autoescape: Whether to enable Jinja2 autoescaping when rendering.
         jinja_env: Custom Jinja2 Environment with filters, globals, etc.
 
     Example:
@@ -71,6 +72,7 @@ class DocxTemplateDetailView(DocxTemplateResponseMixin, View):
         output_format: Desired output format (docx, pdf, odt, html, txt).
         as_attachment: Whether to serve as attachment or inline.
         update_fields: Whether to update TOC, charts, and other fields.
+        autoescape: Whether to enable Jinja2 autoescaping when rendering.
         jinja_env: Custom Jinja2 Environment with filters, globals, etc.
         pk_url_kwarg: Name of the URL keyword argument containing the PK.
         slug_url_kwarg: Name of the URL keyword argument containing the slug.
