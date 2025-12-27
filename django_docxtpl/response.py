@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import tempfile
 from collections.abc import Callable
 from io import BytesIO
@@ -22,6 +23,15 @@ from django_docxtpl.utils import (
 
 # Type alias for context: dict or callable(DocxTemplate, tmp_dir) -> dict
 ContextType = dict[str, Any] | Callable[[DocxTemplate, Path], dict[str, Any]]
+
+
+def _is_async_context() -> bool:
+    """Check if we're currently running in an async context."""
+    try:
+        asyncio.get_running_loop()
+        return True
+    except RuntimeError:
+        return False
 
 
 class DocxTemplateResponse(HttpResponse):
@@ -82,9 +92,31 @@ class DocxTemplateResponse(HttpResponse):
             **kwargs: Additional arguments passed to HttpResponse.
         """
         # Generate the document content
-        content = self._render_document(
-            template, context or {}, output_format, update_fields, jinja_env, autoescape
-        )
+        # If we're in an async context, run the render in a thread pool to allow
+        # synchronous operations (like database queries) in the context callable
+        if _is_async_context():
+            import concurrent.futures
+
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(
+                    self._render_document,
+                    template,
+                    context or {},
+                    output_format,
+                    update_fields,
+                    jinja_env,
+                    autoescape,
+                )
+                content = future.result()
+        else:
+            content = self._render_document(
+                template,
+                context or {},
+                output_format,
+                update_fields,
+                jinja_env,
+                autoescape,
+            )
 
         # Set content type
         content_type = get_content_type(output_format)

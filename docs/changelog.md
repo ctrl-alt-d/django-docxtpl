@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2025-12-27
+
+### Fixed
+- `SynchronousOnlyOperation` error when using `DocxTemplateResponse` with Django ASGI (async mode)
+- Document rendering now automatically runs in a thread pool when called from an async context, allowing synchronous database operations in context callables
+
 ## [0.8.0] - 2025-12-27
 
 ### Changed
