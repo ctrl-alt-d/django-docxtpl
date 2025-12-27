@@ -299,6 +299,7 @@ DocxTemplateResponse(
     output_format="docx",# Output format
     as_attachment=True, # Download as attachment or inline
     update_fields=False,# Update TOC, charts, and dynamic fields
+    autoescape=False,   # Enable Jinja2 autoescaping
 )
 ```
 
@@ -310,12 +311,14 @@ Class attributes:
 - `output_format` - Output format (default: "docx")
 - `as_attachment` - Serve as attachment (default: True)
 - `update_fields` - Update TOC, charts, and dynamic fields (default: False)
+- `autoescape` - Enable Jinja2 autoescaping (default: False)
 
 Override methods:
 - `get_template_name()` - Dynamic template selection
 - `get_filename()` - Dynamic filename
 - `get_output_format()` - Dynamic format selection
 - `get_update_fields()` - Dynamic field update control
+- `get_autoescape()` - Dynamic autoescape control
 - `get_context_data(**kwargs)` - Provide template context
 - `get_context_data_with_docx(docx, **kwargs)` - Provide context with DocxTemplate access (for InlineImage, etc.)
 
